@@ -27,9 +27,19 @@ export function LogsDisplay() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["logs"],
     queryFn: async () => {
-      const response = await fetch("http://localhost:3001/logs");
-      if (!response.ok) throw new Error("Failed to fetch logs");
-      return response.json();
+      const fetchLogs = async () => {
+        try {
+          const response = await fetch('http://16.16.217.98/logs');
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        } catch (error) {
+          console.error('Failed to fetch logs:', error);
+          throw error;
+        }
+      };
+      return fetchLogs();
     },
     refetchInterval: 7 * 60 * 1000, // Refresh every 7 minutes
   });
