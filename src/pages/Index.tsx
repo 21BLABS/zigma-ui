@@ -15,6 +15,14 @@ const Index = () => {
       <div className="crt-flicker" />
       <div className="scanline" />
       
+      {/* Glitch Effects */}
+      <div className="glitch-container">
+        <div className="glitch-effect" />
+        <div className="glitch-rgb" />
+        <div className="glitch-lines" />
+        <div className="glitch-noise" />
+      </div>
+      
       <Hero />
       <OracleLogic />
       <SignalPhilosophy />

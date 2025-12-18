@@ -219,6 +219,205 @@
       0 0 20px hsl(var(--terminal-green) / 0.05),
       inset 0 0 30px hsl(var(--terminal-black) / 0.5);
   }
+
+  /* Random Glitch Effect */
+  .glitch-container {
+    @apply pointer-events-none fixed inset-0 z-50;
+  }
+
+  .glitch-effect {
+    @apply absolute inset-0;
+    animation: glitch-trigger 12s infinite;
+  }
+
+  @keyframes glitch-trigger {
+    0%, 95%, 100% {
+      opacity: 0;
+      transform: none;
+    }
+    95.5% {
+      opacity: 1;
+      transform: translateX(-2px) skewX(-0.5deg);
+    }
+    96% {
+      opacity: 1;
+      transform: translateX(3px) skewX(0.8deg);
+    }
+    96.5% {
+      opacity: 0;
+      transform: translateX(-1px);
+    }
+    97% {
+      opacity: 1;
+      transform: translateX(2px) skewY(0.3deg);
+    }
+    97.5% {
+      opacity: 0;
+    }
+  }
+
+  /* RGB Split/Chromatic Aberration */
+  .glitch-rgb {
+    @apply absolute inset-0 overflow-hidden;
+    animation: rgb-split 8s infinite;
+    mix-blend-mode: screen;
+  }
+
+  .glitch-rgb::before,
+  .glitch-rgb::after {
+    content: '';
+    @apply absolute inset-0;
+    background: transparent;
+  }
+
+  .glitch-rgb::before {
+    animation: rgb-shift-r 8s infinite;
+  }
+
+  .glitch-rgb::after {
+    animation: rgb-shift-b 8s infinite;
+  }
+
+  @keyframes rgb-split {
+    0%, 92%, 100% {
+      opacity: 0;
+    }
+    93% {
+      opacity: 0.8;
+    }
+    94% {
+      opacity: 0;
+    }
+    94.5% {
+      opacity: 0.6;
+    }
+    95% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes rgb-shift-r {
+    0%, 92%, 100% {
+      box-shadow: none;
+    }
+    93%, 94.5% {
+      box-shadow: -3px 0 0 hsl(0 100% 50% / 0.3);
+    }
+  }
+
+  @keyframes rgb-shift-b {
+    0%, 92%, 100% {
+      box-shadow: none;
+    }
+    93%, 94.5% {
+      box-shadow: 3px 0 0 hsl(200 100% 50% / 0.3);
+    }
+  }
+
+  /* Horizontal Tear/Displacement Lines */
+  .glitch-lines {
+    @apply absolute inset-0 overflow-hidden;
+    animation: glitch-lines-trigger 15s infinite;
+  }
+
+  .glitch-lines::before {
+    content: '';
+    @apply absolute left-0 right-0;
+    height: 2px;
+    background: hsl(var(--terminal-green) / 0.8);
+    animation: tear-line 15s infinite;
+  }
+
+  .glitch-lines::after {
+    content: '';
+    @apply absolute left-0 right-0;
+    height: 4px;
+    background: hsl(var(--terminal-green) / 0.4);
+    animation: tear-line-2 15s infinite;
+  }
+
+  @keyframes glitch-lines-trigger {
+    0%, 88%, 100% {
+      opacity: 0;
+    }
+    89% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 0;
+    }
+    90.5% {
+      opacity: 1;
+    }
+    91% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes tear-line {
+    0%, 88% {
+      top: 20%;
+      transform: translateX(0);
+    }
+    89% {
+      top: 45%;
+      transform: translateX(5px);
+    }
+    90% {
+      top: 70%;
+      transform: translateX(-3px);
+    }
+    91%, 100% {
+      top: 30%;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes tear-line-2 {
+    0%, 88% {
+      top: 60%;
+      transform: translateX(0);
+    }
+    89% {
+      top: 25%;
+      transform: translateX(-4px);
+    }
+    90% {
+      top: 80%;
+      transform: translateX(6px);
+    }
+    91%, 100% {
+      top: 50%;
+      transform: translateX(0);
+    }
+  }
+
+  /* Screen Noise/Static */
+  .glitch-noise {
+    @apply absolute inset-0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0;
+    animation: noise-flicker 10s infinite;
+    mix-blend-mode: overlay;
+  }
+
+  @keyframes noise-flicker {
+    0%, 85%, 100% {
+      opacity: 0;
+    }
+    86% {
+      opacity: 0.03;
+    }
+    87% {
+      opacity: 0;
+    }
+    87.5% {
+      opacity: 0.05;
+    }
+    88% {
+      opacity: 0;
+    }
+  }
 }
 
 @layer utilities {
