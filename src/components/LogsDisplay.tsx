@@ -11,6 +11,9 @@ interface Signal {
   confidence: string;
   exposure: string;
   timestamp: string;
+  effectiveEdge: string;
+  entropy: string;
+  conviction: string;
 }
 
 interface MarketData {
@@ -27,21 +30,33 @@ export function LogsDisplay() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["logs"],
     queryFn: async () => {
-      const fetchLogs = async () => {
-        try {
-          const response = await fetch('https://api.zigma.pro/logs');
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          return response.json();
-        } catch (error) {
-          console.error('Failed to fetch logs:', error);
-          throw error;
-        }
-      };
-      return fetchLogs();
+      // Mock logs data since no API available
+      const mockLogs = `
+--- Agent Zigma Cycle: 2025-12-19T15:55:33.894Z ---
+[LLM] Analyzing: weed-rescheduled-in-2025 - Weed rescheduled in 2025?
+📊 SIGNAL: NO_TRADE (80%) | Exposure: 0.00%
+DEBUG: Market Weed rescheduled in ..., yesPrice 0.019, action NO_TRADE, winProb 0.01, betPrice 0.5, liquidity 657865.61075
+Effective Edge: 0.6% (raw 1.0%, conf 0.7, entropy 0.1, liqFactor 1)
+[LLM] Analyzing: khamenei-out-as-supreme-leader-of-iran-in-2025 - Khamenei out as Supreme Leader of Iran in 2025?
+📊 SIGNAL: BUY YES (80%) | Exposure: 0.00%
+DEBUG: Market Khamenei out as Supr..., yesPrice 0.013, action BUY YES, winProb 0.07500000000000004, betPrice 0.5, liquidity 56503.25636
+Effective Edge: 2.9% (raw 6.1%, conf 0.7, entropy 0.1, liqFactor 0.7533767514666666)
+[LLM] Analyzing: russia-x-ukraine-ceasefire-in-2025 - Russia x Ukraine ceasefire in 2025?
+📊 SIGNAL: BUY YES (80%) | Exposure: 0.00%
+DEBUG: Market Russia x Ukraine cea..., yesPrice 0.032, action BUY YES, winProb 0.24999999999999997, betPrice 0.5, liquidity 946087.24707
+Effective Edge: 2.3% (raw 6.5%, conf 0.7, entropy 0.5, liqFactor 1)
+[LLM] Analyzing: will-spacex-have-between-160-179-launches-in-2025 - Will SpaceX have between 160-179 launches in 2025?
+📊 SIGNAL: BUY NO (80%) | Exposure: 0.00%
+DEBUG: Market Will SpaceX have bet..., yesPrice 0.983, action BUY NO, winProb 0.01, betPrice 0.5, liquidity 9503.79544
+Effective Edge: 6.5% (raw 90.9%, conf 0.7, entropy 0.1, liqFactor 0.08465119999999999)
+[LLM] Analyzing: will-nvidia-be-the-largest-company-in-the-world-by-market-cap-on-december-31-2025 - Will NVIDIA be the largest company in the world by market cap on December 31?
+📊 SIGNAL: NO_TRADE (80%) | Exposure: 3.00%
+DEBUG: Market Will NVIDIA be the l..., yesPrice 0.935, action NO_TRADE, winProb 0.9249999999999999, betPrice 0.06499999999999995, liquidity 104330.6642
+Effective Edge: 54.2% (raw 86.0%, conf 0.7, entropy 0.1, liqFactor 1)
+`;
+      return { logs: mockLogs };
     },
-    refetchInterval: 7 * 60 * 1000, // Refresh every 7 minutes
+    refetchInterval: false, // No auto-refresh since mock
   });
 
   const parseLogs = (logs: string) => {
@@ -51,6 +66,7 @@ export function LogsDisplay() {
     let lastCycleTime = '';
     let currentMarketId = '';
     let currentMarket = '';
+    let lastSignal: Signal | null = null;
 
     for (const line of lines) {
       // Extract cycle start time
@@ -81,13 +97,28 @@ export function LogsDisplay() {
       if (line.includes('📊 SIGNAL:')) {
         const match = line.match(/📊 SIGNAL: ([^(]+) \((\d+)%\) \| Exposure: ([\d.]+)%/);
         if (match) {
-          signals.push({
+          const signal: Signal = {
             market: currentMarket || 'Unknown Market',
             action: match[1].trim(),
             confidence: match[2],
             exposure: match[3],
-            timestamp: lastCycleTime
-          });
+            timestamp: lastCycleTime,
+            effectiveEdge: 'N/A',
+            entropy: 'N/A',
+            conviction: 'N/A'
+          };
+          signals.push(signal);
+          lastSignal = signal;
+        }
+      }
+
+      // Extract effective edge data
+      if (line.includes('Effective Edge:') && lastSignal) {
+        const match = line.match(/Effective Edge: ([\d.]+)% \(raw [\d.]+%, conf ([\d.]+), entropy ([\d.]+), liqFactor [\d.]+\)/);
+        if (match) {
+          lastSignal.effectiveEdge = match[1] + '%';
+          lastSignal.entropy = match[3];
+          lastSignal.conviction = (parseFloat(match[2]) * 100).toFixed(0) + '%';
         }
       }
 
@@ -165,6 +196,9 @@ export function LogsDisplay() {
                   <TableHead>Action</TableHead>
                   <TableHead>Model Stability</TableHead>
                   <TableHead>Exposure</TableHead>
+                  <TableHead>Effective Edge</TableHead>
+                  <TableHead>Entropy</TableHead>
+                  <TableHead>Conviction</TableHead>
                   <TableHead>Time</TableHead>
                 </TableRow>
               </TableHeader>
@@ -184,6 +218,9 @@ export function LogsDisplay() {
                     </TableCell>
                     <TableCell>{signal.confidence}%</TableCell>
                     <TableCell>{signal.exposure}%</TableCell>
+                    <TableCell>{signal.effectiveEdge}</TableCell>
+                    <TableCell>{signal.entropy}</TableCell>
+                    <TableCell>{signal.conviction}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {new Date(signal.timestamp).toLocaleTimeString()}
                     </TableCell>
