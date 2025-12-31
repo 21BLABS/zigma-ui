@@ -181,7 +181,7 @@ const Index = () => {
         {/* Left Panel: Oracle Core (Static) */}
         <div className="space-y-8">
           <div className="text-center border-b border-green-400 pb-4">
-            <h1 className="text-2xl font-bold">──────── ORACLE CORE ────────</h1>
+            <h1 className="text-2xl font-bold">ORACLE CORE </h1>
           </div>
           <Hero />
           <Manifesto />
@@ -196,7 +196,7 @@ const Index = () => {
         {/* Right Panel: Execution Snapshot (Live) */}
         <div className="space-y-8">
           <div className="text-center border-b border-green-400 pb-4">
-            <h1 className="text-2xl font-bold">──────── EXECUTION SNAPSHOT ────────</h1>
+            <h1 className="text-2xl font-bold">EXECUTION SNAPSHOT</h1>
           </div>
 
           {/* Cycle Summary */}

@@ -240,7 +240,8 @@ export function LogsDisplay({ logs }: { logs?: string }) {
         </CardHeader>
         <CardContent>
           {finalSignals.length > 0 ? (
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Market</TableHead>
@@ -277,12 +278,14 @@ export function LogsDisplay({ logs }: { logs?: string }) {
                 ))}
               </TableBody>
             </Table>
+            </div> // Close the overflow-x-auto div here
           ) : (
             <p className="text-muted-foreground">No final signals</p>
           )}
         </CardContent>
       </Card>
 
+// ...
       {/* Recent Signals */}
       <Card>
         <CardHeader>
@@ -290,7 +293,8 @@ export function LogsDisplay({ logs }: { logs?: string }) {
         </CardHeader>
         <CardContent>
           {signals.length > 0 ? (
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Action</TableHead>
@@ -337,6 +341,7 @@ export function LogsDisplay({ logs }: { logs?: string }) {
                 ))}
               </TableBody>
             </Table>
+            </div> // Close the overflow-x-auto div here
           ) : (
             <p className="text-muted-foreground">No recent signals</p>
           )}
