@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import { lazy, Suspense, useEffect, useState } from "react";
+import SiteHeader from "@/components/SiteHeader";
+import Footer from "@/components/Footer";
 
 const LogsDisplay = lazy(() =>
   import("@/components/LogsDisplay").then((module) => ({ default: module.LogsDisplay }))
@@ -19,6 +21,13 @@ const Logs = () => {
       try {
         if (!isMounted) return;
         const logsRes = await fetch(API_BASE + "/logs");
+        if (logsRes.status === 401) {
+          if (isMounted) {
+            setError("Authentication required. This endpoint is restricted to authorized users only.");
+            setIsLoading(false);
+          }
+          return;
+        }
         if (!logsRes.ok) throw new Error(`Failed to fetch logs: ${logsRes.status}`);
         const logsData = await logsRes.json();
         if (isMounted) {
@@ -47,7 +56,9 @@ const Logs = () => {
   }, []);
 
   return (
-    <main className="min-h-screen bg-black text-green-400 font-mono p-4">
+    <div className="min-h-screen bg-black text-green-400 font-mono">
+      <SiteHeader />
+      <main className="p-4">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="mb-4">
           <Link to="/" className="terminal-link">
@@ -80,7 +91,10 @@ const Logs = () => {
         <div>
           {error ? (
             <div className="bg-red-900 border border-red-400 p-4">
-              <p className="text-red-200 text-sm">{error}</p>
+              <p className="text-red-200 text-sm mb-4">{error}</p>
+              <p className="text-red-300/80 text-xs">
+                If you believe this is an error, please contact the administrator with your API key.
+              </p>
             </div>
           ) : (
             <Suspense fallback={<div className="text-green-400">Booting terminal...</div>}>
@@ -89,7 +103,9 @@ const Logs = () => {
           )}
         </div>
       </div>
-    </main>
+      </main>
+      <Footer />
+    </div>
   );
 };
 

@@ -6,7 +6,8 @@ const LatestSignal = () => {
   useEffect(() => {
     const fetchLatestSignal = async () => {
       try {
-        const res = await fetch('http://localhost:3001/logs');
+        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.zigma.pro';
+        const res = await fetch(`${API_BASE}/logs`);
         const data = await res.json();
         const parsed = parseLogs(data.logs);
         if (parsed.signals.length > 0) {

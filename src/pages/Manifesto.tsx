@@ -1,12 +1,13 @@
 import { Link } from "react-router-dom";
+import SiteHeader from "@/components/SiteHeader";
+import Footer from "@/components/Footer";
 
 const Manifesto = () => {
   return (
-    <main className="min-h-screen bg-black text-green-400 font-mono p-4">
+    <div className="min-h-screen bg-black text-green-400 font-mono">
+      <SiteHeader />
+      <main className="p-4">
       <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <Link to="/" className="terminal-link">&lt; BACK TO ORACLE CORE</Link>
-        </div>
         <h1 className="text-3xl font-bold text-green-400 mb-8 glow-text">ZIGMA MANIFESTO</h1>
 
         {/* Opening Quote */}
@@ -75,15 +76,6 @@ const Manifesto = () => {
                 </p>
               </div>
 
-              <div className="bg-gray-900 p-6 border border-green-400 md:col-span-2">
-                <h3 className="text-xl font-semibold text-green-400 mb-3">Independence and Rationing</h3>
-                <p>
-                  Zigma can function without a token. The token exists solely to ration access in a usage-aligned way: burn for premium feeds, audits, API expansions, or analytics.
-                </p>
-                <p className="mt-2 text-muted-foreground">
-                  No staking, no yields, no governance theater. If demand exceeds supply, burns ensure only committed users benefit.
-                </p>
-              </div>
 
               <div className="bg-gray-900 p-6 border border-green-400 md:col-span-2">
                 <h3 className="text-xl font-semibold text-green-400 mb-3">Truth in Markets</h3>
@@ -112,7 +104,9 @@ const Manifesto = () => {
           <p className="text-muted-foreground">Read the <Link to="/docs" className="terminal-link">full documentation</Link> or check <Link to="/logs" className="terminal-link">live logs</Link>.</p>
         </div>
       </div>
-    </main>
+      </main>
+      <Footer />
+    </div>
   );
 };
 

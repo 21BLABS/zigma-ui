@@ -2,7 +2,15 @@ import Hero from "@/components/Hero";
 import AntiAIManifesto from "@/components/SignalPhilosophy";
 import TokenUtility from "@/components/TokenUtility";
 import Footer from "@/components/Footer";
+import SiteHeader from "@/components/SiteHeader";
+import { OnboardingTour } from "@/components/OnboardingTour";
+import { Link } from "react-router-dom";
 import { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 interface SystemStatus {
   status?: string;
@@ -200,33 +208,84 @@ const Index = () => {
   const [summarySignals, setSummarySignals] = useState<Signal[]>([]);
   const [volumeSpikes, setVolumeSpikes] = useState<VolumeSpike[]>([]);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  const [backtestResults, setBacktestResults] = useState<any>(null);
+  const [activeDeck, setActiveDeck] = useState<"signals" | "basket">("signals");
+  
+  // Loading states
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingStatus, setIsLoadingStatus] = useState(false);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.zigma.pro';
 
   useEffect(() => {
     const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+      
       try {
         const fetchedAt = Date.now();
-        const [dataRes, statusRes, logsRes] = await Promise.all([
-          fetch(API_BASE + '/data'),
-          fetch(API_BASE + '/status'),
-          fetch(API_BASE + '/logs')
-        ]);
-        const dataData = await dataRes.json();
-        const statusData = await statusRes.json();
-        const logsData = await logsRes.json();
+        let dataData = null;
+        let statusData = { status: 'operational', lastRun: null, uptime: 0, posts: 0, marketsScanned: 0, marketsQualified: 0, marketsMonitored: 0 };
+        let logsData = { logs: 'Using persisted data from Supabase.' };
+
+        // Try to fetch from Supabase
+        if (supabase) {
+          try {
+            const { data, error } = await supabase
+              .from('cycle_snapshots')
+              .select('*')
+              .order('id', { ascending: false })
+              .limit(1);
+            if (!error && data && data.length > 0) {
+              dataData = data[0].data;
+              statusData.lastRun = dataData.lastRun;
+              statusData.posts = dataData.posts;
+            }
+          } catch (e) {
+            console.error('Supabase fetch failed:', e);
+          }
+        }
+
+        // If no data from Supabase, try backend
+        if (!dataData) {
+          try {
+            const dataRes = await fetch(API_BASE + '/data');
+            if (!dataRes.ok) throw new Error('Failed to fetch data');
+            dataData = await dataRes.json();
+          } catch (e) {
+            console.error('Backend data fetch failed:', e);
+            setError('Failed to load market data');
+          }
+        }
+
+        // Try status and logs from backend
+        try {
+          setIsLoadingStatus(true);
+          const [statusRes, logsRes] = await Promise.all([
+            fetch(API_BASE + '/status'),
+            fetch(API_BASE + '/logs')
+          ]);
+          if (statusRes.ok) statusData = await statusRes.json();
+          if (logsRes.ok) logsData = await logsRes.json();
+        } catch (e) {
+          console.error('Status/logs fetch failed:', e);
+        } finally {
+          setIsLoadingStatus(false);
+        }
 
         const logInsights = extractCycleInsights(logsData.logs);
-        const cycleSummary = dataData.cycleSummary || {};
+        const cycleSummary = dataData?.cycleSummary || {};
 
         const mergedStatus: SystemStatus = {
           status: statusData.status || 'operational',
-          uptime: statusData.uptime ?? cycleSummary.uptime ?? liveStatus.uptime,
-          lastRun: statusData.lastRun || cycleSummary.lastRun || logInsights.lastCycle || liveStatus.lastRun,
+          uptime: statusData.uptime ?? cycleSummary.uptime ?? 0,
+          lastRun: statusData.lastRun || cycleSummary.lastRun || logInsights.lastCycle || null,
           marketsScanned: statusData.marketsScanned ?? cycleSummary.marketsFetched ?? logInsights.marketsScanned,
           marketsQualified: statusData.marketsQualified ?? cycleSummary.marketsEligible ?? logInsights.marketsQualified,
           marketsMonitored: statusData.marketsMonitored ?? cycleSummary.marketsEligible ?? logInsights.marketsAnalyzed,
-          posts: statusData.posts ?? cycleSummary.signalsGenerated ?? liveStatus.posts,
+          posts: statusData.posts ?? cycleSummary.signalsGenerated ?? 0,
           heartbeat: fetchedAt,
           dataTimestamp: fetchedAt,
         };
@@ -235,22 +294,36 @@ const Index = () => {
         setLastUpdated(fetchedAt);
         setLiveLogs(logsData.logs);
 
-        const apiVolumeSpikes = Array.isArray(dataData.volumeSpikes) && dataData.volumeSpikes.length
+        const apiVolumeSpikes = Array.isArray(dataData?.volumeSpikes) && dataData.volumeSpikes.length
           ? normalizeVolumeSpikes(dataData.volumeSpikes)
           : logInsights.volumeSpikes;
         setVolumeSpikes(apiVolumeSpikes);
         const { summarySignals } = parseSignals(logsData.logs);
         setSummarySignals(summarySignals);
 
-        const apiExecutables = normalizeApiSignals(dataData.liveSignals);
-        const apiOutlook = normalizeApiSignals(dataData.marketOutlook);
-        const apiRejected = normalizeApiSignals(dataData.rejectedSignals);
+        const apiExecutables = normalizeApiSignals(dataData?.liveSignals);
+        const apiOutlook = normalizeApiSignals(dataData?.marketOutlook);
+        const apiRejected = normalizeApiSignals(dataData?.rejectedSignals);
 
         if (apiExecutables.length) setLiveSignals(apiExecutables);
         if (apiOutlook.length) setMarketOutlook(apiOutlook);
         if (apiRejected.length) setRejectedSignals(apiRejected);
       } catch (e) {
-        console.error('Failed to fetch data');
+        console.error('Failed to fetch data:', e);
+        setError('Failed to load data. Please try again later.');
+      } finally {
+        setIsLoading(false);
+      }
+
+      // Fetch backtest results
+      try {
+        const backtestRes = await fetch(API_BASE + '/backtest');
+        if (backtestRes.ok) {
+          const backtestData = await backtestRes.json();
+          setBacktestResults(backtestData);
+        }
+      } catch (e) {
+        console.error('Failed to fetch backtest data');
       }
     };
 
@@ -435,7 +508,35 @@ const Index = () => {
   };
 
   return (
-    <main className="min-h-screen bg-black text-green-400 font-mono p-4">
+    <div className="min-h-screen bg-black text-green-400 font-mono">
+      <SiteHeader />
+      
+      {/* Global Loading Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-400 mx-auto mb-4"></div>
+            <p className="text-green-400 text-lg">Loading Zigma...</p>
+            <p className="text-gray-500 text-sm mt-2">Fetching market data and analysis</p>
+          </div>
+        </div>
+      )}
+      
+      {/* Error Display */}
+      {error && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-red-900/90 border border-red-500 text-white px-6 py-4 rounded-lg z-50 max-w-md">
+          <p className="font-bold mb-2">⚠️ Error</p>
+          <p className="text-sm">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 bg-red-700 hover:bg-red-600 px-4 py-2 rounded text-sm"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+      
+      <main className="p-4">
       {/* Subtle CRT Effects */}
       <div className="fixed inset-0 bg-gradient-to-b from-transparent via-transparent to-black opacity-20 pointer-events-none" />
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_center,_transparent_50%,_rgba(0,0,0,0.8)_100%)] pointer-events-none" />
@@ -455,9 +556,6 @@ const Index = () => {
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left Panel: Oracle Core (Static) */}
         <div className="space-y-8">
-          <div className="text-center border-b border-green-400 pb-4">
-            <h1 className="text-2xl font-bold">ORACLE CORE </h1>
-          </div>
           <Hero />
           <AntiAIManifesto />
           <TokenUtility />
@@ -465,20 +563,50 @@ const Index = () => {
 
         {/* Right Panel: Execution Snapshot (Live) */}
         <div className="space-y-8">
-          <div className="text-center border-b border-green-400 pb-4">
-            <h1 className="text-2xl font-bold">EXECUTION SNAPSHOT</h1>
+          {/* Chat CTA */}
+          <div className="rounded-2xl border border-green-500/40 bg-gradient-to-br from-green-500/10 to-transparent p-6 text-left shadow-[0_0_25px_rgba(34,197,94,0.2)]">
+            <p className="text-xs uppercase tracking-[0.4em] text-green-300">Live interrogation</p>
+            <h2 className="mt-2 text-2xl font-semibold text-white">Tap the oracle directly.</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Paste any Polymarket link. Zigma hydrates the book, checks news flow, and returns a BUY/SELL/HOLD with reasoning.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link
+                to="/chat"
+                className="inline-flex items-center gap-2 rounded-full border border-green-400/60 bg-black/40 px-5 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-green-200 hover:bg-green-400/10"
+              >
+                Launch chat
+              </Link>
+              <a
+                href="https://polymarket.com/"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs uppercase tracking-[0.3em] text-muted-foreground hover:text-green-200"
+              >
+                View markets ↗
+              </a>
+            </div>
           </div>
 
           {/* Cycle Summary */}
           <div className="bg-gray-900 border border-green-400 p-4">
-            <h2 className="text-lg mb-2">SYSTEM STATUS: {liveStatus.status?.toUpperCase()}</h2>
-            <p>Uptime: {formatUptime(liveStatus.uptime)}</p>
-            <p>Last completed cycle: {formatUtcTimestamp(liveStatus.lastRun)}</p>
-            <p>Agent Heartbeat: <span className="animate-pulse text-green-400">●</span> {formatHeartbeat(liveStatus.heartbeat)}</p>
-          
-            <p>Data feed age: {liveStatus.lastRun ? `${Math.floor((Date.now() - new Date(liveStatus.lastRun).getTime()) / 1000)}s ago` : '—'}</p>
-            <p>Markets analyzed in latest completed cycle: {liveStatus.marketsScanned || 0} Scanned → {liveStatus.marketsQualified || 0} Qualified → {liveStatus.marketsMonitored || 0} Deep Analysis</p>
-            <p>Executable opportunities found: {liveSignals.length}</p>
+            {isLoadingStatus ? (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-400"></div>
+                <span className="text-sm text-gray-400">Loading system status...</span>
+              </div>
+            ) : (
+              <>
+                <h2 className="text-lg mb-2">SYSTEM STATUS: {liveStatus.status?.toUpperCase()}</h2>
+                <p>Uptime: {formatUptime(liveStatus.uptime)}</p>
+                <p>Last completed cycle: {formatUtcTimestamp(liveStatus.lastRun)}</p>
+                <p>Agent Heartbeat: <span className="animate-pulse text-green-400">●</span> {formatHeartbeat(liveStatus.heartbeat)}</p>
+                
+                <p>Data feed age: {liveStatus.lastRun ? `${Math.floor((Date.now() - new Date(liveStatus.lastRun).getTime()) / 1000)}s ago` : '—'}</p>
+                <p>Markets analyzed in latest completed cycle: {liveStatus.marketsScanned || 0} Scanned → {liveStatus.marketsQualified || 0} Qualified → {liveStatus.marketsMonitored || 0} Deep Analysis</p>
+                <p>Executable opportunities found: {liveSignals.length}</p>
+              </>
+            )}
           </div>
 
           {/* Volatility Alert */}
@@ -494,88 +622,152 @@ const Index = () => {
             </div>
           )}
 
-          {/* Executable Trades */}
+          {/* Executable Trades / Basket Deck */}
           <div className="bg-gray-900 border border-green-400 p-4">
-            <h2 className="text-lg mb-4">🔥 High-Conviction Signals</h2>
-            {liveSignals.length === 0 ? (
-              <p className="text-muted-foreground">No executable trades available.</p>
-            ) : (
-              <div className="space-y-4">
-                {liveSignals.map((signal, index) => (
-                  <div key={index} className={`border-l-4 ${signal.action === 'BUY YES' ? 'border-l-green-500' : 'border-l-red-500'} bg-gray-900 p-4 rounded-r-lg`}>
-                    <div className="flex justify-between items-start">
-                      <h3 className="text-white font-bold">{signal.market}</h3>
-                      {signal.market.toLowerCase().includes('seattle seahawks') && signal.market.toLowerCase().includes('nfc west') && (
-                        <span className="text-xs bg-blue-600 px-2 py-1 rounded ml-2">Informational signal—high market consensus</span>
-                      )}
-                      <span className={`px-2 py-1 text-xs rounded ${signal.action === 'BUY YES' ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'}`}>
-                        {signal.action}
-                      </span>
-                    </div>
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => setActiveDeck("signals")}
+                className={`rounded-full border px-4 py-1 text-xs uppercase tracking-[0.3em] transition ${
+                  activeDeck === "signals"
+                    ? "border-green-400 bg-green-500/10 text-green-200"
+                    : "border-transparent text-muted-foreground hover:text-green-200"
+                }`}
+              >
+                Signals
+              </button>
+              <button
+                onClick={() => setActiveDeck("basket")}
+                className={`rounded-full border px-4 py-1 text-xs uppercase tracking-[0.3em] transition ${
+                  activeDeck === "basket"
+                    ? "border-yellow-400 bg-yellow-500/10 text-yellow-200"
+                    : "border-yellow-400/30 text-yellow-200/60 hover:text-yellow-200"
+                }`}
+              >
+                Basket (Soon)
+              </button>
+            </div>
 
-                    <div className="mt-4 space-y-2 text-sm">
-                      <div className="flex justify-between text-gray-400">
-                        <span title="Zigma Odds represent baseline-adjusted model belief, not forecast probability." className="cursor-help">Zigma Odds</span>
-                        <span>{formatProbability(signal.probZigma)}</span>
-                      </div>
-                      <div className="flex justify-between text-gray-400">
-                        <span>Market Odds</span>
-                        <span>{formatProbability(signal.probMarket)}</span>
-                      </div>
-                      <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
-                        <div
-                          className="bg-purple-500 h-2"
-                          style={{ width: `${Math.min(100, Math.max(0, signal.probZigma || 0))}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex justify-between items-center border-t border-gray-800 pt-2">
-                      <div>
-                        <span className="text-gray-500 text-xs">MODEL CONVICTION</span>
-                        <div className="text-yellow-400">
-                          {'★'.repeat(Math.max(1, Math.floor(signal.confidence / 20)))} ({signal.confidence.toFixed(1)}%)
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-gray-500 text-xs">EFFECTIVE EDGE</span>
-                        <div className="text-green-400 font-mono font-bold">
-                          {signal.effectiveEdge?.toFixed(2) ?? '—'}%
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex justify-between text-xs text-gray-400">
-                      <span>Relative Rank</span>
-                      <span>#{index + 1} of {liveSignals.length}</span>
-                    </div>
-
-                    <div className="mt-4 flex justify-between items-center text-xs">
-                      <a
-                        href={signal.link}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-blue-300 underline hover:text-blue-200"
-                      >
-                        View on Polymarket ↗
-                      </a>
-                      <span className="text-gray-500">
-                        {signal.timestamp ? new Date(signal.timestamp).toLocaleTimeString() : ''}
-                      </span>
-                    </div>
+            {activeDeck === "signals" ? (
+              <>
+                <div className="mb-4 executable-signals">
+                  <h2 className="text-lg mb-2">🟢 EXECUTABLE SIGNALS</h2>
+                  <p className="text-xs text-gray-400">Markets with confirmed edge, liquidity, and survivability. Ready to trade.</p>
+                </div>
+                {liveSignals.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground mb-2">No executable signals available.</p>
+                    <p className="text-xs text-gray-500">Zigma only signals when edge survives all gates. Check back after the next cycle.</p>
                   </div>
-                ))}
+                ) : (
+                  <div className="space-y-4">
+                    {liveSignals.map((signal, index) => (
+                      <div key={index} className={`border-l-4 ${signal.action === 'BUY YES' ? 'border-l-green-500' : 'border-l-red-500'} bg-gray-900 p-4 rounded-r-lg`}>
+                        <div className="flex justify-between items-start">
+                          <h3 className="text-white font-bold">{signal.market}</h3>
+                          <span className={`px-2 py-1 text-xs rounded ${signal.action === 'BUY YES' ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'}`}>
+                            {signal.action}
+                          </span>
+                        </div>
+
+                        <div className="mt-4 space-y-2 text-sm">
+                          <div className="flex justify-between text-gray-400">
+                            <span title="Zigma Odds represent baseline-adjusted model belief, not forecast probability." className="cursor-help">Zigma Odds</span>
+                            <span>{formatProbability(signal.probZigma)}</span>
+                          </div>
+                          <div className="flex justify-between text-gray-400">
+                            <span>Market Odds</span>
+                            <span>{formatProbability(signal.probMarket)}</span>
+                          </div>
+                          <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
+                            <div
+                              className="bg-purple-500 h-2"
+                              style={{ width: `${Math.min(100, Math.max(0, signal.probZigma || 0))}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex justify-between items-center border-t border-gray-800 pt-2">
+                          <div>
+                            <span className="text-gray-500 text-xs">MODEL CONVICTION</span>
+                            <div className="text-yellow-400">
+                              {'★'.repeat(Math.max(1, Math.floor(signal.confidence / 20)))} ({signal.confidence.toFixed(1)}%)
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-gray-500 text-xs">EFFECTIVE EDGE</span>
+                            <div className="text-green-400 font-mono font-bold">
+                              {signal.effectiveEdge?.toFixed(2) ?? '—'}%
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex justify-between text-xs text-gray-400">
+                          <span>Relative Rank</span>
+                          <span>#{index + 1} of {liveSignals.length}</span>
+                        </div>
+
+                        <div className="mt-4 flex justify-between items-center text-xs gap-2">
+                          <div className="flex gap-2">
+                            <a
+                              href={signal.link}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-blue-300 underline hover:text-blue-200"
+                            >
+                              View on Polymarket ↗
+                            </a>
+                            <button
+                              onClick={() => {
+                                const marketId = signal.link?.match(/event\/([^?]+)/)?.[1];
+                                if (marketId) {
+                                  fetch(`${API_BASE}/api/watchlist`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ marketId })
+                                  }).then(() => alert('Added to watchlist!'));
+                                }
+                              }}
+                              className="text-yellow-400 hover:text-yellow-300"
+                              title="Add to Watchlist"
+                            >
+                              📋 Watch
+                            </button>
+                          </div>
+                          <span className="text-gray-500">
+                            {signal.timestamp ? new Date(signal.timestamp).toLocaleTimeString() : ''}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground mt-4">*Signals indicate divergence from baseline expectations, not true mispricing.</p>
+                <p className="text-xs text-muted-foreground mt-1">*Edge adjusted due to normalization, liquidity impact, or entropy change.</p>
+              </>
+            ) : (
+              <div className="space-y-4 text-sm text-muted-foreground">
+                <h2 className="text-lg text-yellow-300">🧺 Basket Engine (Coming Soon)</h2>
+                <p>
+                  Curated market baskets with auto-sizing and capital allocation heuristics are in active development.
+                  Track multiple exposures with one click once the module unlocks.
+                </p>
+                <ul className="list-disc space-y-2 pl-5 text-yellow-200/80">
+                  <li>Macro baskets (rates, ETF approvals)</li>
+                  <li>Election slates (swing states, nomination ladders)</li>
+                  <li>Event clusters (award shows, sports playoffs)</li>
+                </ul>
+                <p className="text-xs uppercase tracking-[0.3em] text-yellow-400">ETA: Post CyreneAI drop</p>
               </div>
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-2">*Signals indicate divergence from baseline expectations, not true mispricing.</p>
-          <p className="text-xs text-muted-foreground mt-2">*Edge adjusted due to normalization, liquidity impact, or entropy change.</p>
 
           {/* Market Outlook */}
           {marketOutlook.length > 0 && (
-            <div className="bg-gray-900 border border-yellow-400 p-4">
-              <h2 className="text-lg mb-4">🧠 MARKET OUTLOOK (NON-EXECUTABLE)</h2>
-              <p className="text-sm text-muted-foreground mb-4">High-confidence views. No position sizing. Not trades. Conviction ≠ tradable edge.</p>
+            <div className="bg-gray-900 border border-yellow-400/30 p-4 watchlist-section">
+              <div className="mb-4">
+                <h2 className="text-lg mb-2">🟡 WATCHLIST</h2>
+                <p className="text-xs text-gray-400">High-confidence views for monitoring. Not yet executable due to liquidity, time decay, or volatility.</p>
+              </div>
               <div className="space-y-4">
                 {marketOutlook.map((signal, index) => (
                   <div key={index} className="border border-yellow-400 p-3">
@@ -667,13 +859,36 @@ const Index = () => {
             </div>
           )}
 
+          {/* Backtest Stats */}
+          {backtestResults && !backtestResults.error && (
+            <div className="bg-gray-900 border border-cyan-400 p-4">
+              <h2 className="text-lg mb-2 text-cyan-300">📊 BACKTEST PERFORMANCE</h2>
+              <p className="text-xs text-muted-foreground mb-4">Historical edge validation on resolved markets. Lower Brier = better calibration.</p>
+              <pre className="text-xs text-cyan-400 whitespace-pre-wrap font-mono">
+                {backtestResults.summary}
+              </pre>
+              {backtestResults.results && backtestResults.results.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-xs text-muted-foreground mb-2">Recent Results ({backtestResults.fullResults} total):</p>
+                  <div className="text-xs font-mono text-cyan-200 space-y-1 max-h-32 overflow-y-auto">
+                    {backtestResults.results.map((line: string, idx: number) => (
+                      <div key={idx}>{line}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </div>
 
       <div className="text-center text-sm text-muted-foreground mt-8">Zigma v0.1 is currently scanning 500+ prediction markets every 60 seconds using deep LLM-consensus.</div>
 
       <Footer />
-    </main>
+      <OnboardingTour />
+      </main>
+    </div>
   );
 };
 
