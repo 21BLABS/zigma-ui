@@ -883,7 +883,6 @@ const Index = () => {
         </div>
       </div>
 
-      <div className="text-center text-sm text-muted-foreground mt-8">Zigma v0.1 is currently scanning 500+ prediction markets every 60 seconds using deep LLM-consensus.</div>
 
       <Footer />
       <OnboardingTour />
