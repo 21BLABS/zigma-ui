@@ -28,6 +28,7 @@ interface Signal {
   market: string;
   action: string;
   confidence: number;
+  confidenceScore?: number;
   exposure: number;
   effectiveEdge?: number;
   timestamp?: string;
@@ -210,6 +211,9 @@ const Index = () => {
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [backtestResults, setBacktestResults] = useState<any>(null);
   const [activeDeck, setActiveDeck] = useState<"signals" | "basket">("signals");
+  const [currentSignalIndex, setCurrentSignalIndex] = useState(0);
+  const [autoRotate, setAutoRotate] = useState(true);
+  const CAROUSEL_INTERVAL_MS = 5000; // 5 seconds per signal
   
   // Loading states
   const [isLoading, setIsLoading] = useState(true);
@@ -331,6 +335,22 @@ const Index = () => {
     const interval = setInterval(fetchData, 30000); // Refresh every 30s
     return () => clearInterval(interval);
   }, []);
+
+  // Auto-rotate through signals
+  useEffect(() => {
+    if (!autoRotate || liveSignals.length <= 1) return;
+
+    const rotationInterval = setInterval(() => {
+      setCurrentSignalIndex(prev => (prev + 1) % liveSignals.length);
+    }, CAROUSEL_INTERVAL_MS);
+
+    return () => clearInterval(rotationInterval);
+  }, [autoRotate, liveSignals.length]);
+
+  // Reset to first signal when signals change
+  useEffect(() => {
+    setCurrentSignalIndex(0);
+  }, [liveSignals]);
 
   const parseSignals = (logs: string) => {
     const cycleDelimiter = '✅ Cycle complete';
@@ -650,8 +670,26 @@ const Index = () => {
             {activeDeck === "signals" ? (
               <>
                 <div className="mb-4 executable-signals">
-                  <h2 className="text-lg mb-2">🟢 EXECUTABLE SIGNALS</h2>
-                  <p className="text-xs text-gray-400">Markets with confirmed edge, liquidity, and survivability. Ready to trade.</p>
+                  <div className="flex justify-between items-center mb-2">
+                    <div>
+                      <h2 className="text-lg">🟢 EXECUTABLE SIGNALS</h2>
+                      <p className="text-xs text-gray-400">Markets with confirmed edge, liquidity, and survivability. Ready to trade.</p>
+                    </div>
+                    {liveSignals.length > 1 && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setAutoRotate(!autoRotate)}
+                          className={`text-xs px-2 py-1 rounded ${autoRotate ? 'bg-green-900 text-green-200' : 'bg-gray-800 text-gray-400'}`}
+                          title={autoRotate ? 'Auto-rotate enabled' : 'Auto-rotate disabled'}
+                        >
+                          {autoRotate ? '🔄 Auto' : '⏸️ Auto'}
+                        </button>
+                        <span className="text-xs text-gray-500">
+                          {currentSignalIndex + 1} / {liveSignals.length}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 {liveSignals.length === 0 ? (
                   <div className="text-center py-8">
@@ -659,90 +697,142 @@ const Index = () => {
                     <p className="text-xs text-gray-500">Zigma only signals when edge survives all gates. Check back after the next cycle.</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {liveSignals.map((signal, index) => (
-                      <div key={index} className={`border-l-4 ${signal.action === 'BUY YES' ? 'border-l-green-500' : 'border-l-red-500'} bg-gray-900 p-4 rounded-r-lg`}>
-                        <div className="flex justify-between items-start">
-                          <h3 className="text-white font-bold">{signal.market}</h3>
-                          <span className={`px-2 py-1 text-xs rounded ${signal.action === 'BUY YES' ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'}`}>
-                            {signal.action}
-                          </span>
-                        </div>
-
-                        <div className="mt-4 space-y-2 text-sm">
-                          <div className="flex justify-between text-gray-400">
-                            <span title="Zigma Odds represent baseline-adjusted model belief, not forecast probability." className="cursor-help">Zigma Odds</span>
-                            <span>{formatProbability(signal.probZigma)}</span>
-                          </div>
-                          <div className="flex justify-between text-gray-400">
-                            <span>Market Odds</span>
-                            <span>{formatProbability(signal.probMarket)}</span>
-                          </div>
-                          <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
-                            <div
-                              className="bg-purple-500 h-2"
-                              style={{ width: `${Math.min(100, Math.max(0, signal.probZigma || 0))}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="mt-4 flex justify-between items-center border-t border-gray-800 pt-2">
-                          <div>
-                            <span className="text-gray-500 text-xs">MODEL CONVICTION</span>
-                            <div className="text-yellow-400">
-                              {'★'.repeat(Math.max(1, Math.floor(signal.confidence / 20)))} ({signal.confidence.toFixed(1)}%)
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-gray-500 text-xs">EFFECTIVE EDGE</span>
-                            <div className="text-green-400 font-mono font-bold">
-                              {signal.effectiveEdge?.toFixed(2) ?? '—'}%
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mt-4 flex justify-between text-xs text-gray-400">
-                          <span>Relative Rank</span>
-                          <span>#{index + 1} of {liveSignals.length}</span>
-                        </div>
-
-                        <div className="mt-4 flex justify-between items-center text-xs gap-2">
-                          <div className="flex gap-2">
-                            <a
-                              href={signal.link}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-blue-300 underline hover:text-blue-200"
+                  <>
+                    <div className="relative">
+                      <div className="overflow-hidden">
+                        <div 
+                          className="transition-opacity duration-500 ease-in-out"
+                          style={{ opacity: 1 }}
+                        >
+                          {liveSignals.map((signal, index) => (
+                            <div 
+                              key={`${signal.market}-${index}`} 
+                              className={`transition-all duration-500 ease-in-out ${index === currentSignalIndex ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 absolute top-0 left-0 right-0 pointer-events-none'}`}
                             >
-                              View on Polymarket ↗
-                            </a>
-                            <button
-                              onClick={() => {
-                                const marketId = signal.link?.match(/event\/([^?]+)/)?.[1];
-                                if (marketId) {
-                                  fetch(`${API_BASE}/api/watchlist`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ marketId })
-                                  }).then(() => alert('Added to watchlist!'));
-                                }
-                              }}
-                              className="text-yellow-400 hover:text-yellow-300"
-                              title="Add to Watchlist"
-                            >
-                              📋 Watch
-                            </button>
-                          </div>
-                          <span className="text-gray-500">
-                            {signal.timestamp ? new Date(signal.timestamp).toLocaleTimeString() : ''}
-                          </span>
+                              <div className={`border-l-4 ${signal.action === 'BUY YES' ? 'border-l-green-500' : 'border-l-red-500'} bg-gray-900 p-4 rounded-r-lg`}>
+                                <div className="flex justify-between items-start">
+                                  <h3 className="text-white font-bold">{signal.market}</h3>
+                                  <span className={`px-2 py-1 text-xs rounded ${signal.action === 'BUY YES' ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'}`}>
+                                    {signal.action}
+                                  </span>
+                                </div>
+
+                                <div className="mt-4 space-y-2 text-sm">
+                                  <div className="flex justify-between text-gray-400">
+                                    <span title="Zigma Odds represent baseline-adjusted model belief, not forecast probability." className="cursor-help">Zigma Odds</span>
+                                    <span>{formatProbability(signal.probZigma)}</span>
+                                  </div>
+                                  <div className="flex justify-between text-gray-400">
+                                    <span>Market Odds</span>
+                                    <span>{formatProbability(signal.probMarket)}</span>
+                                  </div>
+                                  <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
+                                    <div
+                                      className="bg-purple-500 h-2"
+                                      style={{ width: `${Math.min(100, Math.max(0, signal.probZigma || 0))}%` }}
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="mt-4 flex justify-between items-center border-t border-gray-800 pt-2">
+                                  <div>
+                                    <span className="text-gray-500 text-xs">MODEL CONVICTION</span>
+                                    <div className="text-yellow-400">
+                                      {'★'.repeat(Math.max(1, Math.floor((signal.confidenceScore || signal.confidence * 100) / 20)))} ({(signal.confidenceScore || signal.confidence * 100).toFixed(1)}%)
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <span className="text-gray-500 text-xs">EFFECTIVE EDGE</span>
+                                    <div className="text-green-400 font-mono font-bold">
+                                      {signal.effectiveEdge?.toFixed(2) ?? '—'}%
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="mt-4 flex justify-between text-xs text-gray-400">
+                                  <span>Relative Rank</span>
+                                  <span>#{index + 1} of {liveSignals.length}</span>
+                                </div>
+
+                                <div className="mt-4 flex justify-between items-center text-xs gap-2">
+                                  <div className="flex gap-2">
+                                    <a
+                                      href={signal.link}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-blue-300 underline hover:text-blue-200"
+                                    >
+                                      View on Polymarket ↗
+                                    </a>
+                                    <button
+                                      onClick={() => {
+                                        const marketId = signal.link?.match(/event\/([^?]+)/)?.[1];
+                                        if (marketId) {
+                                          fetch(`${API_BASE}/api/watchlist`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ marketId })
+                                          }).then(() => alert('Added to watchlist!'));
+                                        }
+                                      }}
+                                      className="text-yellow-400 hover:text-yellow-300"
+                                      title="Add to Watchlist"
+                                    >
+                                      📋 Watch
+                                    </button>
+                                  </div>
+                                  <span className="text-gray-500">
+                                    {signal.timestamp ? new Date(signal.timestamp).toLocaleTimeString() : ''}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    ))}
-                  </div>
+
+                      {/* Navigation Dots */}
+                      {liveSignals.length > 1 && (
+                        <div className="mt-4 flex justify-center gap-2">
+                          {liveSignals.map((_, i) => (
+                            <button
+                              key={i}
+                              onClick={() => setCurrentSignalIndex(i)}
+                              className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                                i === currentSignalIndex
+                                  ? 'bg-green-400 w-6'
+                                  : 'bg-gray-600 hover:bg-gray-500'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Arrow Navigation */}
+                      {liveSignals.length > 1 && (
+                        <>
+                          <button
+                            onClick={() => setCurrentSignalIndex(prev => prev === 0 ? liveSignals.length - 1 : prev - 1)}
+                            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 w-8 h-8 bg-gray-800 hover:bg-gray-700 rounded-full flex items-center justify-center text-green-400 opacity-0 hover:opacity-100 transition-opacity"
+                          >
+                            ←
+                          </button>
+                          <button
+                            onClick={() => setCurrentSignalIndex(prev => (prev + 1) % liveSignals.length)}
+                            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 w-8 h-8 bg-gray-800 hover:bg-gray-700 rounded-full flex items-center justify-center text-green-400 opacity-0 hover:opacity-100 transition-opacity"
+                          >
+                            →
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </>
                 )}
                 <p className="text-xs text-muted-foreground mt-4">*Signals indicate divergence from baseline expectations, not true mispricing.</p>
                 <p className="text-xs text-muted-foreground mt-1">*Edge adjusted due to normalization, liquidity impact, or entropy change.</p>
+                {autoRotate && liveSignals.length > 1 && (
+                  <p className="text-xs text-green-400/60 mt-1">🔄 Auto-rotating every 5 seconds</p>
+                )}
               </>
             ) : (
               <div className="space-y-4 text-sm text-muted-foreground">
@@ -781,7 +871,7 @@ const Index = () => {
                       )}
                     </div>
                     <div className="text-sm mb-2">
-                      Model Conviction: {'★'.repeat(Math.max(1, Math.floor(signal.confidence / 20)))} ({signal.confidence.toFixed(1)}%)
+                      Model Conviction: {'★'.repeat(Math.max(1, Math.floor((signal.confidenceScore || signal.confidence * 100) / 20)))} ({(signal.confidenceScore || signal.confidence * 100).toFixed(1)}%)
                     </div>
                     {(typeof signal.probZigma === 'number' || typeof signal.probMarket === 'number') && (
                       <div className="text-sm mb-2">
