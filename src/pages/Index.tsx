@@ -667,7 +667,8 @@ const Index = () => {
 
           {/* Executable Trades / Basket Deck */}
           <div className="bg-gray-900 border border-green-400 p-4">
-            <div className="mb-4 flex flex-wrap items-center gap-3">
+            {/* Basket section hidden - coming soon */}
+            {/* <div className="mb-4 flex flex-wrap items-center gap-3">
               <button
                 onClick={() => setActiveDeck("signals")}
                 className={`rounded-full border px-4 py-1 text-xs uppercase tracking-[0.3em] transition ${
@@ -688,7 +689,7 @@ const Index = () => {
               >
                 Basket (Soon)
               </button>
-            </div>
+            </div> */}
 
             {activeDeck === "signals" ? (
               <>
@@ -858,7 +859,12 @@ const Index = () => {
                 )}
               </>
             ) : (
-              <div className="space-y-4">
+              <>
+                {/* Basket view hidden - coming soon */}
+                <div className="text-center py-8">
+                  <p className="text-yellow-400/60 text-sm">🧺 Basket feature coming soon</p>
+                </div>
+                {/* <div className="space-y-4">
                 <h2 className="text-lg text-yellow-300">🧺 BASKET OVERVIEW</h2>
                 <p className="text-sm text-gray-400">All executable signals in one view with portfolio insights.</p>
 
@@ -980,8 +986,8 @@ const Index = () => {
                       *Basket view shows all executable signals together. Diversify across categories to manage risk.
                     </p>
                   </>
-                )}
-              </div>
+                )} */}
+              </>
             )}
           </div>
 
