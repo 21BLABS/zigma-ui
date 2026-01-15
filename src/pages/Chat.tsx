@@ -17,6 +17,7 @@ interface Recommendation {
   probability: number | null;
   marketOdds: number | null;
   effectiveEdge: number | null;
+  entropy?: number;
 }
 
 interface UserProfile {
@@ -289,37 +290,77 @@ const Chat = () => {
 
   const renderRecommendation = (rec?: Recommendation) => {
     if (!rec) return null;
-    const variant =
-      ACTION_VARIANTS[rec.action as keyof typeof ACTION_VARIANTS] ||
-      ACTION_VARIANTS.DEFAULT;
-
     return (
-      <div className="mt-3 space-y-2 text-xs">
-        <Badge className={cn("border", variant.variant)}>{variant.label}</Badge>
-        <div className="grid grid-cols-2 gap-2 text-muted-foreground">
-          <div>
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
+        <Badge className={ACTION_VARIANTS[rec.action]?.variant || ACTION_VARIANTS.DEFAULT.variant}>
+          {ACTION_VARIANTS[rec.action]?.label || rec.action}
+        </Badge>
+        {rec.confidence !== null && (
+          <div className="flex items-center gap-2">
             <p className="text-[10px] uppercase tracking-wide">Confidence</p>
             <p className="font-mono text-sm text-white">{formatNumber(rec.confidence, "%")}</p>
           </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wide">Zigma Prob</p>
-            <p className="font-mono text-sm text-white">{formatNumber(rec.probability)}</p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wide">Market Odds</p>
-            <p className="font-mono text-sm text-white">{formatNumber(rec.marketOdds)}</p>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wide">Effective Edge</p>
-            <p className="font-mono text-sm text-white">
-              {rec.effectiveEdge === null || rec.effectiveEdge === undefined
-                ? "—"
-                : `${(rec.effectiveEdge * 100).toFixed(2)} bps`}
-            </p>
-          </div>
+        )}
+        <div>
+          <p className="text-[10px] uppercase tracking-wide">Zigma Prob</p>
+          <p className="font-mono text-sm text-white">{formatNumber(rec.probability)}</p>
+        </div>
+        <div>
+          <p className="text-[10px] uppercase tracking-wide">Market Odds</p>
+          <p className="font-mono text-sm text-white">{formatNumber(rec.marketOdds)}</p>
+        </div>
+        <div>
+          <p className="text-[10px] uppercase tracking-wide">Effective Edge</p>
+          <p className="font-mono text-sm text-white">
+            {rec.effectiveEdge === null || rec.effectiveEdge === undefined
+              ? "—"
+              : `${rec.effectiveEdge.toFixed(2)}%`}
+          </p>
         </div>
       </div>
-    );
+      
+      {/* Confidence Level Visual Indicator */}
+      {rec.confidence !== null && (
+        <div className="mt-3">
+          <div className="flex justify-between items-center mb-1">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Confidence Level</p>
+            <span className={`text-[10px] font-mono ${
+              rec.confidence >= 80 ? 'text-green-400' :
+              rec.confidence >= 60 ? 'text-yellow-400' :
+              rec.confidence >= 40 ? 'text-orange-400' :
+              'text-red-400'
+            }`}>
+              {rec.confidence >= 80 ? 'HIGH' :
+               rec.confidence >= 60 ? 'MODERATE' :
+               rec.confidence >= 40 ? 'LOW' :
+               'VERY LOW'}
+            </span>
+          </div>
+          <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+            <div
+              className={`h-2 rounded-full transition-all duration-500 ${
+                rec.confidence >= 80 ? 'bg-green-500' :
+                rec.confidence >= 60 ? 'bg-yellow-500' :
+                rec.confidence >= 40 ? 'bg-orange-500' :
+                'bg-red-500'
+              }`}
+              style={{ width: `${rec.confidence}%` }}
+            />
+          </div>
+        </div>
+      )}
+      
+      {rec.entropy !== undefined && rec.entropy > 0.5 && (
+        <div className="mt-3 p-3 bg-yellow-600/20 border border-yellow-500/40 rounded-md">
+          <p className="text-[10px] uppercase tracking-wide text-yellow-300 mb-1">⚠️ High Uncertainty Warning</p>
+          <p className="text-xs text-yellow-100">
+            This market has high entropy ({(rec.entropy * 100).toFixed(1)}%), indicating significant uncertainty in the outcome. Consider reducing position size.
+          </p>
+        </div>
+      )}
+    </div>
+  );
   };
 
   const renderUserProfile = (profile?: UserProfile) => {
@@ -544,19 +585,23 @@ const Chat = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {positions.map((pos, i) => (
-                    <tr key={i} className="border-t border-green-500/10 hover:bg-green-500/5">
-                      <td className="p-2 text-white truncate max-w-[200px]" title={pos.title}>
-                        {pos.outcome || 'N/A'}
-                      </td>
-                      <td className="p-2 text-right font-mono">{(pos.size ?? 0).toFixed(2)}</td>
-                      <td className="p-2 text-right font-mono">{((pos.avgPrice ?? 0) * 100).toFixed(1)}%</td>
-                      <td className="p-2 text-right font-mono">{((pos.curPrice ?? 0) * 100).toFixed(1)}%</td>
-                      <td className={`p-2 text-right font-mono ${(pos.cashPnl ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        ${(pos.cashPnl ?? 0).toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
+                  {positions.map((pos, i) => {
+                    // Calculate P&L correctly: (currentPrice - avgPrice) * size
+                    const calculatedPnl = ((pos.curPrice ?? 0) - (pos.avgPrice ?? 0)) * (pos.size ?? 0);
+                    return (
+                      <tr key={i} className="border-t border-green-500/10 hover:bg-green-500/5">
+                        <td className="p-2 text-white truncate max-w-[200px]" title={pos.title}>
+                          {pos.outcome || 'N/A'}
+                        </td>
+                        <td className="p-2 text-right font-mono">{(pos.size ?? 0).toFixed(2)}</td>
+                        <td className="p-2 text-right font-mono">{((pos.avgPrice ?? 0) * 100).toFixed(1)}%</td>
+                        <td className="p-2 text-right font-mono">{((pos.curPrice ?? 0) * 100).toFixed(1)}%</td>
+                        <td className={`p-2 text-right font-mono ${calculatedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          ${calculatedPnl.toFixed(2)}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -838,7 +883,7 @@ const Chat = () => {
                   Awaiting your first question.
                 </div>
               )}
-              {messages.map((message, index) => {
+              {[...messages].reverse().map((message, index) => {
                 const isUser = message.role === "user";
                 return (
                   <div
@@ -868,25 +913,6 @@ const Chat = () => {
             </div>
 
             <Separator className="bg-green-500/10" />
-
-            {messages
-              .filter((message) => message.role === "assistant")
-              .slice(-1)
-              .map((message, index) => (
-                <div
-                  key={`rec-${index}`}
-                  className="p-5 bg-black/70 border-t border-green-500/10 text-white"
-                >
-                  <p className="text-xs uppercase tracking-[0.3em] text-green-400/80 mb-3">
-                    {message.userProfile ? "User Profile Summary" : "Latest Recommendation"}
-                  </p>
-                  {message.userProfile
-                    ? renderUserProfile(message.userProfile)
-                    : message.recommendation
-                    ? renderRecommendation(message.recommendation)
-                    : "No actionable edge detected yet."}
-                </div>
-              ))}
           </div>
         </section>
       </main>

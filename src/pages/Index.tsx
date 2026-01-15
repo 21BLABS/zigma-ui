@@ -151,7 +151,7 @@ const normalizeApiSignals = (signals?: any[]): Signal[] =>
             probZigma,
             probMarket,
             rawEdge,
-            link: signal.link || (signal.market ? buildPolymarketUrl(signal.market) : undefined),
+            link: signal.link || (signal.marketSlug || signal.marketQuestion ? buildPolymarketUrl(signal.marketSlug || '', signal.marketQuestion) : undefined),
           };
         })
         .filter(Boolean)
@@ -225,16 +225,33 @@ const Index = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      setIsLoading(true);
+      // Don't show full loading state - use cached data if available
+      const hasCachedData = liveSignals.length > 0 || marketOutlook.length > 0;
+      if (!hasCachedData) {
+        setIsLoading(true);
+      }
       setError(null);
-      
+
+      const fetchWithTimeout = async (url: string, timeout = 10000) => {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        try {
+          const response = await fetch(url, { signal: controller.signal });
+          clearTimeout(id);
+          return response;
+        } catch (error) {
+          clearTimeout(id);
+          throw error;
+        }
+      };
+
       try {
         const fetchedAt = Date.now();
         let dataData = null;
         let statusData = { status: 'operational', lastRun: null, uptime: 0, posts: 0, marketsScanned: 0, marketsQualified: 0, marketsMonitored: 0 };
         let logsData = { logs: 'Using persisted data from Supabase.' };
 
-        // Try to fetch from Supabase
+        // Try to fetch from Supabase first (faster, more reliable)
         if (supabase) {
           try {
             const { data, error } = await supabase
@@ -252,27 +269,30 @@ const Index = () => {
           }
         }
 
-        // If no data from Supabase, try backend
+        // If no data from Supabase, try backend with timeout
         if (!dataData) {
           try {
-            const dataRes = await fetch(API_BASE + '/data');
+            const dataRes = await fetchWithTimeout(API_BASE + '/data', 8000);
             if (!dataRes.ok) throw new Error('Failed to fetch data');
             dataData = await dataRes.json();
           } catch (e) {
             console.error('Backend data fetch failed:', e);
-            setError('Failed to load market data');
+            // Don't set error - use cached data if available
+            if (!hasCachedData) {
+              setError('Backend unavailable. Using cached data.');
+            }
           }
         }
 
-        // Try status and logs from backend
+        // Try status and logs from backend with timeout (non-blocking)
         try {
           setIsLoadingStatus(true);
           const [statusRes, logsRes] = await Promise.all([
-            fetch(API_BASE + '/status'),
-            fetch(API_BASE + '/logs')
+            fetchWithTimeout(API_BASE + '/status', 5000).catch(() => null),
+            fetchWithTimeout(API_BASE + '/logs', 5000).catch(() => null)
           ]);
-          if (statusRes.ok) statusData = await statusRes.json();
-          if (logsRes.ok) logsData = await logsRes.json();
+          if (statusRes && statusRes.ok) statusData = await statusRes.json();
+          if (logsRes && logsRes.ok) logsData = await logsRes.json();
         } catch (e) {
           console.error('Status/logs fetch failed:', e);
         } finally {
@@ -309,20 +329,23 @@ const Index = () => {
         const apiOutlook = normalizeApiSignals(dataData?.marketOutlook);
         const apiRejected = normalizeApiSignals(dataData?.rejectedSignals);
 
+        // Only update if we have new data
         if (apiExecutables.length) setLiveSignals(apiExecutables);
         if (apiOutlook.length) setMarketOutlook(apiOutlook);
         if (apiRejected.length) setRejectedSignals(apiRejected);
       } catch (e) {
         console.error('Failed to fetch data:', e);
-        setError('Failed to load data. Please try again later.');
+        if (!hasCachedData) {
+          setError('Failed to load data. Please try again later.');
+        }
       } finally {
         setIsLoading(false);
       }
 
-      // Fetch backtest results
+      // Fetch backtest results (non-blocking)
       try {
-        const backtestRes = await fetch(API_BASE + '/backtest');
-        if (backtestRes.ok) {
+        const backtestRes = await fetchWithTimeout(API_BASE + '/backtest', 5000);
+        if (backtestRes && backtestRes.ok) {
           const backtestData = await backtestRes.json();
           setBacktestResults(backtestData);
         }
@@ -835,18 +858,129 @@ const Index = () => {
                 )}
               </>
             ) : (
-              <div className="space-y-4 text-sm text-muted-foreground">
-                <h2 className="text-lg text-yellow-300">🧺 Basket Engine (Coming Soon)</h2>
-                <p>
-                  Curated market baskets with auto-sizing and capital allocation heuristics are in active development.
-                  Track multiple exposures with one click once the module unlocks.
-                </p>
-                <ul className="list-disc space-y-2 pl-5 text-yellow-200/80">
-                  <li>Macro baskets (rates, ETF approvals)</li>
-                  <li>Election slates (swing states, nomination ladders)</li>
-                  <li>Event clusters (award shows, sports playoffs)</li>
-                </ul>
-                <p className="text-xs uppercase tracking-[0.3em] text-yellow-400">ETA: Post CyreneAI drop</p>
+              <div className="space-y-4">
+                <h2 className="text-lg text-yellow-300">🧺 BASKET OVERVIEW</h2>
+                <p className="text-sm text-gray-400">All executable signals in one view with portfolio insights.</p>
+
+                {liveSignals.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No executable signals available for basket view.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Portfolio Summary */}
+                    <div className="bg-gray-800 p-4 rounded-lg mb-4">
+                      <h3 className="text-yellow-300 mb-3">📊 Portfolio Summary</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground block">Total Signals</span>
+                          <span className="text-white font-bold">{liveSignals.length}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block">Avg Edge</span>
+                          <span className="text-green-400 font-bold">
+                            {liveSignals.length > 0
+                              ? (liveSignals.reduce((sum, s) => sum + (s.effectiveEdge || 0), 0) / liveSignals.length).toFixed(2)
+                              : '0'}%
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block">Buy YES</span>
+                          <span className="text-green-400 font-bold">
+                            {liveSignals.filter(s => s.action === 'BUY YES').length}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block">Buy NO</span>
+                          <span className="text-red-400 font-bold">
+                            {liveSignals.filter(s => s.action === 'BUY NO').length}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Category Distribution */}
+                    <div className="bg-gray-800 p-4 rounded-lg mb-4">
+                      <h3 className="text-yellow-300 mb-3">🏷️ Category Distribution</h3>
+                      <div className="space-y-2">
+                        {['POLITICS', 'CRYPTO', 'SPORTS', 'MACRO', 'TECH'].map(category => {
+                          const categorySignals = liveSignals.filter(s => {
+                            const q = s.market?.toLowerCase() || '';
+                            if (category === 'POLITICS') return /election|politic|trump|biden|senate|congress/i.test(q);
+                            if (category === 'CRYPTO') return /bitcoin|ethereum|crypto|token|airdrop/i.test(q);
+                            if (category === 'SPORTS') return /win|champion|league|cup|game|match/i.test(q);
+                            if (category === 'MACRO') return /gdp|inflation|rate|fed|economy/i.test(q);
+                            if (category === 'TECH') return /google|apple|microsoft|ai|tech/i.test(q);
+                            return false;
+                          });
+                          if (categorySignals.length === 0) return null;
+                          return (
+                            <div key={category} className="flex justify-between text-sm">
+                              <span className="text-gray-400">{category}</span>
+                              <span className="text-white">{categorySignals.length} signals</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* All Signals Table */}
+                    <div className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-800">
+                            <tr>
+                              <th className="px-4 py-2 text-left text-gray-400">Market</th>
+                              <th className="px-4 py-2 text-center text-gray-400">Action</th>
+                              <th className="px-4 py-2 text-center text-gray-400">Zigma Odds</th>
+                              <th className="px-4 py-2 text-center text-gray-400">Market Odds</th>
+                              <th className="px-4 py-2 text-center text-gray-400">Edge</th>
+                              <th className="px-4 py-2 text-center text-gray-400">Conviction</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {liveSignals.map((signal, index) => (
+                              <tr key={index} className="border-t border-gray-800 hover:bg-gray-800/50">
+                                <td className="px-4 py-3 text-white max-w-xs truncate" title={signal.market}>
+                                  {signal.market}
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className={`px-2 py-1 text-xs rounded ${
+                                    signal.action === 'BUY YES'
+                                      ? 'bg-green-900 text-green-200'
+                                      : 'bg-red-900 text-red-200'
+                                  }`}>
+                                    {signal.action}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-center text-yellow-400">
+                                  {formatProbability(signal.probZigma)}
+                                </td>
+                                <td className="px-4 py-3 text-center text-gray-400">
+                                  {formatProbability(signal.probMarket)}
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className={`font-mono ${signal.effectiveEdge && signal.effectiveEdge > 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                                    {signal.effectiveEdge?.toFixed(2) ?? '—'}%
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className="text-yellow-400">
+                                    {'★'.repeat(Math.max(1, Math.floor((signal.confidenceScore || signal.confidence * 100) / 20)))}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground mt-4">
+                      *Basket view shows all executable signals together. Diversify across categories to manage risk.
+                    </p>
+                  </>
+                )}
               </div>
             )}
           </div>
