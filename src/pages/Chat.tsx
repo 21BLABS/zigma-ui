@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { MetricTooltip } from "@/components/MetricTooltip";
-import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
 
@@ -195,7 +194,6 @@ const Chat = () => {
   const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
   const [editingContent, setEditingContent] = useState("");
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const feedRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -208,10 +206,6 @@ const Chat = () => {
     if (savedFavorites) {
       setFavorites(JSON.parse(savedFavorites));
     }
-    const hasSeenTutorial = localStorage.getItem('zigma-tutorial-seen');
-    if (!hasSeenTutorial) {
-      setShowOnboarding(true);
-    }
     
     // Auto-focus input on mount
     if (inputRef.current) {
@@ -223,7 +217,6 @@ const Chat = () => {
       if (e.key === 'Escape') {
         setShowHistory(false);
         setShowSuggestions(false);
-        setShowOnboarding(false);
         setEditingMessageIndex(null);
         setEditingContent('');
       }
@@ -346,11 +339,6 @@ const Chat = () => {
   };
 
   const isFavorite = matchedMarket ? favorites.includes(matchedMarket.id) : false;
-
-  const handleOnboardingComplete = () => {
-    localStorage.setItem('zigma-tutorial-seen', 'true');
-    setShowOnboarding(false);
-  };
 
   const handleClearConversation = () => {
     handleReset();
@@ -1216,11 +1204,6 @@ const Chat = () => {
         </section>
       </main>
       <Footer />
-      <OnboardingTutorial
-        isOpen={showOnboarding}
-        onClose={() => setShowOnboarding(false)}
-        onComplete={handleOnboardingComplete}
-      />
     </div>
   );
 };

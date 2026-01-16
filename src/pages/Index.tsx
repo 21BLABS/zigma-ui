@@ -4,6 +4,7 @@ import TokenUtility from "@/components/TokenUtility";
 import Footer from "@/components/Footer";
 import SiteHeader from "@/components/SiteHeader";
 import { OnboardingTour } from "@/components/OnboardingTour";
+import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
@@ -151,7 +152,7 @@ const normalizeApiSignals = (signals?: any[]): Signal[] =>
             probZigma,
             probMarket,
             rawEdge,
-            link: signal.link || (signal.marketSlug || signal.marketQuestion ? buildPolymarketUrl(signal.marketSlug || '', signal.marketQuestion) : undefined),
+            link: signal.link || (signal.marketSlug || signal.marketQuestion ? buildPolymarketUrl(signal.marketSlug || signal.marketQuestion || '') : undefined),
           };
         })
         .filter(Boolean)
@@ -198,6 +199,7 @@ const extractCycleInsights = (logs: string) => {
 };
 
 const Index = () => {
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [showRejected, setShowRejected] = useState(false);
   const [showAuditLogs, setShowAuditLogs] = useState(false);
   const [liveStatus, setLiveStatus] = useState<SystemStatus>({});
@@ -222,6 +224,18 @@ const Index = () => {
   const [error, setError] = useState<string | null>(null);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.zigma.pro';
+
+  useEffect(() => {
+    const hasSeenTutorial = localStorage.getItem('zigma-tutorial-seen');
+    if (!hasSeenTutorial) {
+      setShowOnboarding(true);
+    }
+  }, []);
+
+  const handleOnboardingComplete = () => {
+    localStorage.setItem('zigma-tutorial-seen', 'true');
+    setShowOnboarding(false);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -993,6 +1007,11 @@ const Index = () => {
 
       <Footer />
       <OnboardingTour />
+      <OnboardingTutorial
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+        onComplete={handleOnboardingComplete}
+      />
       </main>
     </div>
   );
