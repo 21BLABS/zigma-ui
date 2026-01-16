@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { MetricTooltip } from "@/components/MetricTooltip";
+import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
 
@@ -178,21 +180,78 @@ const Chat = () => {
   const [input, setInput] = useState("");
   const [marketId, setMarketId] = useState("");
   const [polymarketUser, setPolymarketUser] = useState("");
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(true);
   const [contextId, setContextId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const messagesPerPage = 10;
   const [matchedMarket, setMatchedMarket] = useState<ChatResponse["matchedMarket"]>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [queryHistory, setQueryHistory] = useState<{ query: string; timestamp: string; contextId?: string }[]>([]);
+  const [historySearchQuery, setHistorySearchQuery] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
+  const [editingContent, setEditingContent] = useState("");
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const feedRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const savedHistory = localStorage.getItem('zigma-chat-history');
     if (savedHistory) {
       setQueryHistory(JSON.parse(savedHistory));
     }
+    const savedFavorites = localStorage.getItem('zigma-favorites');
+    if (savedFavorites) {
+      setFavorites(JSON.parse(savedFavorites));
+    }
+    const hasSeenTutorial = localStorage.getItem('zigma-tutorial-seen');
+    if (!hasSeenTutorial) {
+      setShowOnboarding(true);
+    }
+    
+    // Auto-focus input on mount
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+    
+    // Keyboard shortcuts
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowHistory(false);
+        setShowSuggestions(false);
+        setShowOnboarding(false);
+        setEditingMessageIndex(null);
+        setEditingContent('');
+      }
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'k') {
+          e.preventDefault();
+          if (inputRef.current) {
+            inputRef.current.focus();
+          }
+        }
+        if (e.key === 'e' && !e.shiftKey) {
+          e.preventDefault();
+          if (inputRef.current) {
+            inputRef.current.select();
+          }
+        }
+        if (e.key === 'l') {
+          e.preventDefault();
+          setShowHistory(!showHistory);
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   const handleSaveToHistory = (query: string) => {
@@ -207,12 +266,119 @@ const Chat = () => {
     localStorage.setItem('zigma-chat-history', JSON.stringify(updatedHistory));
   };
 
+  const filteredHistory = queryHistory.filter(entry =>
+    entry.query.toLowerCase().includes(historySearchQuery.toLowerCase())
+  );
+
+  const SUGGESTED_QUERIES = [
+    "Show me crypto markets with high edge",
+    "Analyze user 0xf1879bcf95ad31c43be1deea77a51572d5b301fe",
+    "What's the best presidential election market?",
+    "Compare Bitcoin vs Ethereum markets",
+    "Show me sports futures with good odds"
+  ];
+
+  const handleSuggestedQuery = (query: string) => {
+    setInput(query);
+    setShowSuggestions(false);
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
+  const handleCopyToClipboard = (content: string) => {
+    navigator.clipboard.writeText(content);
+  };
+
+  const handleExportAnalysis = () => {
+    if (messages.length === 0) return;
+    
+    const exportContent = messages.map(msg => {
+      const role = msg.role === 'user' ? 'You' : 'Agent Zigma';
+      return `${role}:\n${msg.content}\n${msg.recommendation ? `\nRecommendation: ${msg.recommendation.action}\n` : ''}`;
+    }).join('\n---\n\n');
+    
+    const blob = new Blob([exportContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `zigma-analysis-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleEditMessage = (index: number) => {
+    setEditingMessageIndex(index);
+    setEditingContent(messages[index].content);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingMessageIndex !== null) {
+      const updatedMessages = [...messages];
+      updatedMessages[editingMessageIndex] = {
+        ...updatedMessages[editingMessageIndex],
+        content: editingContent
+      };
+      setMessages(updatedMessages);
+      setEditingMessageIndex(null);
+      setEditingContent('');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessageIndex(null);
+    setEditingContent('');
+  };
+
+  const handleDeleteMessage = (index: number) => {
+    const updatedMessages = messages.filter((_, i) => i !== index);
+    setMessages(updatedMessages);
+  };
+
+  const handleToggleFavorite = (marketId: string) => {
+    const updatedFavorites = favorites.includes(marketId)
+      ? favorites.filter(id => id !== marketId)
+      : [...favorites, marketId];
+    setFavorites(updatedFavorites);
+    localStorage.setItem('zigma-favorites', JSON.stringify(updatedFavorites));
+  };
+
+  const isFavorite = matchedMarket ? favorites.includes(matchedMarket.id) : false;
+
+  const handleOnboardingComplete = () => {
+    localStorage.setItem('zigma-tutorial-seen', 'true');
+    setShowOnboarding(false);
+  };
+
+  const handleClearConversation = () => {
+    handleReset();
+    setCurrentPage(1);
+  };
+
+  const handleRetryQuery = () => {
+    if (input.trim() && mutation.status === 'error') {
+      mutation.mutate();
+    }
+  };
+
   const handleLoadFromHistory = (entry: { query: string; contextId?: string }) => {
     setInput(entry.query);
     if (entry.contextId) {
       setContextId(entry.contextId);
     }
     setShowHistory(false);
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
+  const totalPages = Math.ceil(messages.length / messagesPerPage);
+  const paginatedMessages = messages.slice(0, currentPage * messagesPerPage);
+
+  const handleLoadMore = () => {
+    setCurrentPage(prev => prev + 1);
   };
 
   const mutation = useMutation({
@@ -297,27 +463,35 @@ const Chat = () => {
           {ACTION_VARIANTS[rec.action]?.label || rec.action}
         </Badge>
         {rec.confidence !== null && (
-          <div className="flex items-center gap-2">
-            <p className="text-[10px] uppercase tracking-wide">Confidence</p>
-            <p className="font-mono text-sm text-white">{formatNumber(rec.confidence, "%")}</p>
-          </div>
+          <MetricTooltip content="Confidence measures how certain the model is about its prediction. High confidence (80%+) indicates strong conviction in the analysis.">
+            <div className="flex items-center gap-2">
+              <p className="text-[10px] uppercase tracking-wide">Confidence</p>
+              <p className="font-mono text-sm text-white">{formatNumber(rec.confidence, "%")}</p>
+            </div>
+          </MetricTooltip>
         )}
-        <div>
-          <p className="text-[10px] uppercase tracking-wide">Zigma Prob</p>
-          <p className="font-mono text-sm text-white">{formatNumber(rec.probability)}</p>
-        </div>
-        <div>
-          <p className="text-[10px] uppercase tracking-wide">Market Odds</p>
-          <p className="font-mono text-sm text-white">{formatNumber(rec.marketOdds)}</p>
-        </div>
-        <div>
-          <p className="text-[10px] uppercase tracking-wide">Effective Edge</p>
-          <p className="font-mono text-sm text-white">
-            {rec.effectiveEdge === null || rec.effectiveEdge === undefined
-              ? "—"
-              : `${rec.effectiveEdge.toFixed(2)}%`}
-          </p>
-        </div>
+        <MetricTooltip content="Zigma Probability is the model's calculated probability of the YES outcome, based on market data and analysis.">
+          <div>
+            <p className="text-[10px] uppercase tracking-wide">Zigma Prob</p>
+            <p className="font-mono text-sm text-white">{formatNumber(rec.probability)}</p>
+          </div>
+        </MetricTooltip>
+        <MetricTooltip content="Market Odds are the current prices on Polymarket for the YES outcome.">
+          <div>
+            <p className="text-[10px] uppercase tracking-wide">Market Odds</p>
+            <p className="font-mono text-sm text-white">{formatNumber(rec.marketOdds)}</p>
+          </div>
+        </MetricTooltip>
+        <MetricTooltip content="Effective Edge is the difference between Zigma's calculated probability and the market odds. Positive edge indicates potential profit opportunity.">
+          <div>
+            <p className="text-[10px] uppercase tracking-wide">Effective Edge</p>
+            <p className="font-mono text-sm text-white">
+              {rec.effectiveEdge === null || rec.effectiveEdge === undefined
+                ? "—"
+                : `${rec.effectiveEdge.toFixed(2)}%`}
+            </p>
+          </div>
+        </MetricTooltip>
       </div>
       
       {/* Confidence Level Visual Indicator */}
@@ -695,8 +869,17 @@ const Chat = () => {
                 Ask Zigma
               </label>
               <Textarea
+                ref={inputRef}
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (canSubmit) {
+                      mutation.mutate();
+                    }
+                  }
+                }}
                 placeholder="Paste a Polymarket URL or ask a question (e.g., 'Will ETH flip BTC by 2026?')"
                 className="mt-2 h-24 bg-black/60 border-green-500/30 text-green-100 placeholder:text-green-200/40"
               />
@@ -759,7 +942,15 @@ const Chat = () => {
               </div>
             )}
 
-            <div className="flex items-center gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowSuggestions(!showSuggestions)}
+                className="border-gray-700 text-gray-200 hover:bg-gray-900"
+              >
+                💡 Samples
+              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -774,27 +965,63 @@ const Chat = () => {
                 )}
               </Button>
               <Button
+                type="button"
+                variant="outline"
+                onClick={handleClearConversation}
+                className="border-gray-700 text-gray-200 hover:bg-gray-900"
+              >
+                🗑️ Clear
+              </Button>
+              <Button
                 type="submit"
                 disabled={!canSubmit}
-                className="bg-green-600 hover:bg-green-500 text-black font-semibold flex-1"
+                className="bg-green-600 hover:bg-green-500 text-black font-semibold col-span-2 md:col-span-1"
               >
                 {mutation.status === "pending" ? "Analyzing…" : "Ask Zigma"}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleReset}
-                className="border-gray-700 text-gray-200 hover:bg-gray-900"
-              >
-                Reset
-              </Button>
+              {error && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleRetryQuery}
+                  className="border-red-700 text-red-200 hover:bg-red-900 col-span-2 md:col-span-3"
+                >
+                  🔄 Retry
+                </Button>
+              )}
             </div>
+
+            {showSuggestions && (
+              <div className="mt-4 border border-green-500/20 rounded-md bg-black/40 p-3">
+                <p className="text-xs text-muted-foreground mb-2">Suggested Queries</p>
+                <div className="space-y-2">
+                  {SUGGESTED_QUERIES.map((query, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSuggestedQuery(query)}
+                      className="w-full text-left text-xs text-green-200 hover:text-green-100 hover:bg-green-900/20 px-3 py-2 rounded transition"
+                    >
+                      {query}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {showHistory && queryHistory.length > 0 && (
               <div className="mt-4 border border-green-500/20 rounded-md bg-black/40 p-3">
-                <p className="text-xs text-muted-foreground mb-2">Recent Queries</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-muted-foreground">Recent Queries</p>
+                  <input
+                    type="text"
+                    placeholder="Search history..."
+                    value={historySearchQuery}
+                    onChange={(e) => setHistorySearchQuery(e.target.value)}
+                    className="text-xs bg-black/60 border-gray-700 text-gray-200 px-2 py-1 rounded w-32"
+                  />
+                </div>
                 <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {queryHistory.slice(0, 10).map((entry, idx) => (
+                  {filteredHistory.slice(0, 10).map((entry, idx) => (
                     <button
                       key={idx}
                       onClick={() => handleLoadFromHistory(entry)}
@@ -849,11 +1076,20 @@ const Chat = () => {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm text-muted-foreground">Market</p>
-                    {matchedMarket.similarity !== undefined && (
-                      <span className="text-xs text-green-300">
-                        Match {(matchedMarket.similarity * 100).toFixed(1)}% via {matchedMarket.source}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {matchedMarket.similarity !== undefined && (
+                        <span className="text-xs text-green-300">
+                          Match {(matchedMarket.similarity * 100).toFixed(1)}% via {matchedMarket.source}
+                        </span>
+                      )}
+                      <button
+                        onClick={() => handleToggleFavorite(matchedMarket.id)}
+                        className={`text-lg ${isFavorite ? 'text-red-400' : 'text-gray-400'} hover:text-red-400 transition`}
+                        title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                      >
+                        {isFavorite ? '❤️' : '🤍'}
+                      </button>
+                    </div>
                   </div>
                   <p className="text-lg font-semibold text-white">{matchedMarket.question}</p>
                   <div className="flex flex-wrap items-center gap-3 text-xs text-green-300 mt-2">
@@ -899,14 +1135,77 @@ const Chat = () => {
                       {isUser ? "You" : "Agent Zigma"}
                     </div>
                     <div className="whitespace-pre-wrap leading-relaxed">
-                      {message.content}
+                      {editingMessageIndex === index ? (
+                        <div className="space-y-2">
+                          <Textarea
+                            value={editingContent}
+                            onChange={(e) => setEditingContent(e.target.value)}
+                            className="bg-black/60 border-green-500/30 text-green-100 text-sm"
+                            rows={4}
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={handleSaveEdit}
+                              className="text-xs bg-green-600 hover:bg-green-500 text-black px-3 py-1 rounded"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={handleCancelEdit}
+                              className="text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        message.content
+                      )}
                     </div>
                     {!isUser && message.recommendation && (
                       <div>{renderRecommendation(message.recommendation)}</div>
                     )}
+                    {!isUser && (
+                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-green-500/10">
+                        <button
+                          onClick={() => handleCopyToClipboard(message.content)}
+                          className="text-xs text-green-400/80 hover:text-green-400 flex items-center gap-1 transition"
+                        >
+                          📋 Copy
+                        </button>
+                        <button
+                          onClick={() => handleEditMessage(index)}
+                          className="text-xs text-green-400/80 hover:text-green-400 flex items-center gap-1 transition"
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteMessage(index)}
+                          className="text-xs text-red-400/80 hover:text-red-400 flex items-center gap-1 transition"
+                        >
+                          🗑️ Delete
+                        </button>
+                        {matchedMarket && (
+                          <button
+                            onClick={() => setInput(`What's the current price of ${matchedMarket.question}?`)}
+                            className="text-xs text-green-400/80 hover:text-green-400 flex items-center gap-1 transition"
+                          >
+                            💬 Follow up
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
+              {currentPage < totalPages && (
+                <button
+                  onClick={handleLoadMore}
+                  className="w-full text-center text-xs text-green-400/80 hover:text-green-400 py-2 border border-green-500/20 rounded hover:bg-green-900/10 transition"
+                >
+                  Load more messages ({totalPages - currentPage} remaining)
+                </button>
+              )}
               {mutation.status === "pending" && (
                 <div className="text-sm text-muted-foreground italic">Zigma is thinking…</div>
               )}
@@ -917,6 +1216,11 @@ const Chat = () => {
         </section>
       </main>
       <Footer />
+      <OnboardingTutorial
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+        onComplete={handleOnboardingComplete}
+      />
     </div>
   );
 };

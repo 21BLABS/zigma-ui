@@ -69,6 +69,7 @@ const SignalPerformance = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [edgeFilter, setEdgeFilter] = useState<number>(0);
   const [timeFilter, setTimeFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   useEffect(() => {
     setApiBaseUrl(import.meta.env.VITE_API_BASE_URL || "https://api.zigma.pro");
@@ -169,7 +170,7 @@ const SignalPerformance = () => {
           {/* Filters */}
           <Card className="border-green-500/30 bg-black/40 mb-6">
             <CardContent className="pt-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <label className="text-xs uppercase tracking-wider text-muted-foreground">Category</label>
                   <select
@@ -210,6 +211,16 @@ const SignalPerformance = () => {
                     <option value="30">Last 30 Days</option>
                     <option value="90">Last 90 Days</option>
                   </select>
+                </div>
+                <div>
+                  <label className="text-xs uppercase tracking-wider text-muted-foreground">Search</label>
+                  <Input
+                    type="text"
+                    placeholder="Search signals..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="mt-1 bg-black/50 border-green-500/30"
+                  />
                 </div>
               </div>
             </CardContent>
@@ -332,7 +343,13 @@ const SignalPerformance = () => {
               <CardContent>
                 <div className="space-y-4">
                   {recentSignals && recentSignals.length > 0 ? (
-                    recentSignals.map((signal) => (
+                    recentSignals
+                      .filter(signal => 
+                        searchQuery === '' || 
+                        signal.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        signal.category.toLowerCase().includes(searchQuery.toLowerCase())
+                      )
+                      .map((signal) => (
                       <div key={signal.id} className="border-b border-green-500/10 pb-4 last:border-0 last:pb-0">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">

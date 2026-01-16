@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
 import { exportToJSON } from "@/utils/export";
+import { Pagination, usePagination } from "@/components/Pagination";
 
 interface WatchlistItem {
   id: string;
@@ -28,6 +29,7 @@ const Watchlist = () => {
   const [newMarketId, setNewMarketId] = useState<string>("");
   const [importError, setImportError] = useState<string>("");
   const [importSuccess, setImportSuccess] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
@@ -44,6 +46,11 @@ const Watchlist = () => {
     },
     refetchInterval: 60000,
     enabled: !!apiBaseUrl,
+  });
+
+  const { currentPage, totalPages, startIndex, endIndex, goToPage, resetPage } = usePagination({
+    totalItems: watchlist?.length || 0,
+    itemsPerPage: 10
   });
 
   const addToWatchlistMutation = useMutation({
@@ -224,6 +231,18 @@ const Watchlist = () => {
             Your Watchlist
             {watchlist && <Badge variant="outline" className="border-green-500 text-green-400 ml-2">{watchlist.length}</Badge>}
           </h2>
+
+          {/* Search Input */}
+          {watchlist && watchlist.length > 0 && (
+            <div className="mb-4">
+              <Input
+                placeholder="Search markets by question or category..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-black/50 border-green-500/30 text-green-100 placeholder:text-green-200/40"
+              />
+            </div>
+          )}
           
           {loading ? (
             <div className="space-y-4">
@@ -242,45 +261,64 @@ const Watchlist = () => {
               </CardContent>
             </Card>
           ) : watchlist && watchlist.length > 0 ? (
-            <div className="space-y-4">
-              {watchlist.map((item) => (
-                <Card key={item.id} className="border-green-500/30 bg-black/40">
-                  <CardContent className="pt-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-green-400 mb-2">
-                          {item.question}
-                        </p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                          <Badge variant="outline" className="border-green-500 text-green-400">
-                            {item.category}
-                          </Badge>
-                          <span>Added: {new Date(item.addedAt).toLocaleDateString()}</span>
+            <>
+              <div className="space-y-4">
+                {watchlist
+                  .filter(item => 
+                    searchQuery === '' || 
+                    item.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    item.category.toLowerCase().includes(searchQuery.toLowerCase())
+                  )
+                  .slice(startIndex, endIndex)
+                  .map((item) => (
+                  <Card key={item.id} className="border-green-500/30 bg-black/40">
+                    <CardContent className="pt-6">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-green-400 mb-2">
+                            {item.question}
+                          </p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                            <Badge variant="outline" className="border-green-500 text-green-400">
+                              {item.category}
+                            </Badge>
+                            <span>Added: {new Date(item.addedAt).toLocaleDateString()}</span>
+                          </div>
+                          {item.currentOdds && (
+                            <div className="text-xs text-muted-foreground">
+                              Current Odds: {item.currentOdds.toFixed(2)}%
+                            </div>
+                          )}
+                          {item.lastSignal && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Last Signal: Edge {item.lastSignal.edge.toFixed(2)}% | Conf {item.lastSignal.confidence.toFixed(0)}%
+                            </div>
+                          )}
                         </div>
-                        {item.currentOdds && (
-                          <div className="text-xs text-muted-foreground">
-                            Current Odds: {item.currentOdds.toFixed(2)}%
-                          </div>
-                        )}
-                        {item.lastSignal && (
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Last Signal: Edge {item.lastSignal.edge.toFixed(2)}% | Conf {item.lastSignal.confidence.toFixed(0)}%
-                          </div>
-                        )}
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleRemoveFromWatchlist(item.marketId)}
+                          disabled={removeFromWatchlistMutation.isPending}
+                        >
+                          Remove
+                        </Button>
                       </div>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleRemoveFromWatchlist(item.marketId)}
-                        disabled={removeFromWatchlistMutation.isPending}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              
+              {/* Pagination */}
+              <div className="mt-6">
+                <Pagination
+                  totalItems={watchlist.length}
+                  itemsPerPage={10}
+                  currentPage={currentPage}
+                  onPageChange={goToPage}
+                />
+              </div>
+            </>
           ) : (
             <Card className="border-green-500/30 bg-black/40">
               <CardContent className="pt-6">
