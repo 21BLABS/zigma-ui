@@ -496,9 +496,10 @@ const Index = () => {
       if (typeof zigmaProb === 'number') {
         signal.probZigma = zigmaProb;
         if (typeof signal.rawEdge === 'number') {
-          const marketProb = signal.action === 'BUY YES'
-            ? zigmaProb - signal.rawEdge
-            : zigmaProb + signal.rawEdge;
+          // rawEdge can be positive or negative
+          // If rawEdge > 0: zigmaProb > marketProb (BUY YES)
+          // If rawEdge < 0: zigmaProb < marketProb (BUY NO)
+          const marketProb = zigmaProb - signal.rawEdge;
           signal.probMarket = Math.min(100, Math.max(0, marketProb));
         }
       }
