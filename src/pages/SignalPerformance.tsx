@@ -15,7 +15,7 @@ interface Signal {
   question: string;
   category: string;
   predictedProbability: number;
-  confidence: number;
+  confidenceScore: number;
   edge: number;
   timestamp: string;
   outcome?: 'YES' | 'NO';
@@ -369,7 +369,7 @@ const SignalPerformance = () => {
                             </div>
                             <div className="text-sm">
                               <span className="text-muted-foreground">Conf:</span>{' '}
-                              <span className="text-green-400">{signal.confidence.toFixed(0)}%</span>
+                              <span className="text-green-400">{signal.confidenceScore?.toFixed(0) ?? '—'}%</span>
                             </div>
                           </div>
                         </div>

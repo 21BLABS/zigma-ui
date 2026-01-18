@@ -19,7 +19,7 @@ interface WatchlistItem {
   currentOdds?: number;
   lastSignal?: {
     edge: number;
-    confidence: number;
+    confidenceScore: number;
     timestamp: string;
   };
 }
@@ -291,7 +291,7 @@ const Watchlist = () => {
                           )}
                           {item.lastSignal && (
                             <div className="text-xs text-muted-foreground mt-1">
-                              Last Signal: Edge {item.lastSignal.edge.toFixed(2)}% | Conf {item.lastSignal.confidence.toFixed(0)}%
+                              Last Signal: Edge {item.lastSignal.edge.toFixed(2)}% | Conf {item.lastSignal.confidenceScore?.toFixed(0) ?? '—'}%
                             </div>
                           )}
                         </div>

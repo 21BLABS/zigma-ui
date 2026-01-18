@@ -113,7 +113,6 @@ const formatExposure = (value?: number) => {
 
 const toPercentIfNeeded = (value: number | undefined) => {
   if (typeof value !== 'number' || Number.isNaN(value)) return undefined;
-  if (value <= 1 && value >= 0) return value * 100;
   return value;
 };
 
@@ -141,7 +140,8 @@ const normalizeApiSignals = (signals?: any[]): Signal[] =>
           return {
             market: signal.market || signal.marketTitle || 'Unknown market',
             action: signal.action || 'HOLD',
-            confidence: Number(signal.confidence ?? signal.confidenceScore ?? 0),
+            confidence: Number(signal.confidenceScore ?? 0),
+            confidenceScore: Number(signal.confidenceScore ?? 0),
             exposure:
               typeof signal.intentExposure === 'number'
                 ? signal.intentExposure
@@ -777,7 +777,7 @@ const Index = () => {
                                   <div>
                                     <span className="text-gray-500 text-xs">MODEL CONVICTION</span>
                                     <div className="text-yellow-400">
-                                      {'★'.repeat(Math.max(1, Math.floor((signal.confidenceScore || signal.confidence * 100) / 20)))} ({(signal.confidenceScore || signal.confidence * 100).toFixed(1)}%)
+                                      {'★'.repeat(Math.max(1, Math.floor((signal.confidenceScore || 0) / 20)))} ({(signal.confidenceScore || 0).toFixed(1)}%)
                                     </div>
                                   </div>
                                   <div className="text-right">
@@ -903,7 +903,7 @@ const Index = () => {
                       )}
                     </div>
                     <div className="text-sm mb-2">
-                      Model Conviction: {'★'.repeat(Math.max(1, Math.floor((signal.confidenceScore || signal.confidence * 100) / 20)))} ({(signal.confidenceScore || signal.confidence * 100).toFixed(1)}%)
+                      Model Conviction: {'★'.repeat(Math.max(1, Math.floor((signal.confidenceScore || 0) / 20)))} ({(signal.confidenceScore || 0).toFixed(1)}%)
                     </div>
                     {(typeof signal.probZigma === 'number' || typeof signal.probMarket === 'number') && (
                       <div className="text-sm mb-2">
@@ -965,7 +965,7 @@ const Index = () => {
                       </div>
                     </div>
                     <div className="flex flex-wrap justify-between items-center text-xs text-muted-foreground mt-3 gap-2">
-                      <span>Model Conviction: {signal.confidence?.toFixed(1) ?? '—'}%</span>
+                      <span>Model Conviction: {signal.confidenceScore?.toFixed(1) ?? '—'}%</span>
                       <a
                         href={signal.link}
                         target="_blank"
