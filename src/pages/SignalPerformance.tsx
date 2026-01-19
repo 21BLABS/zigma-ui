@@ -9,6 +9,17 @@ import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
 import { exportToCSV, exportToJSON } from "@/utils/export";
 
+interface HistoricalTrade {
+  timestamp: string;
+  marketQuestion: string;
+  action: string;
+  price: number;
+  edge: number;
+  confidence: number;
+  tradeTier?: string;
+  link?: string;
+}
+
 interface Signal {
   id: string;
   marketId: string;
@@ -72,7 +83,7 @@ const SignalPerformance = () => {
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   useEffect(() => {
-    setApiBaseUrl(import.meta.env.VITE_API_BASE_URL || "https://api.zigma.pro");
+    setApiBaseUrl(import.meta.env.VITE_API_BASE_URL || "http://localhost:3001");
   }, []);
 
   const { data: signalPerf, isLoading: perfLoading, error: perfError } = useQuery<SignalPerformance>({
@@ -97,6 +108,29 @@ const SignalPerformance = () => {
       const res = await fetch(`${apiBaseUrl}/api/signals/recent?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch recent signals");
       return res.json();
+    },
+    refetchInterval: 60000,
+    enabled: !!apiBaseUrl,
+  });
+
+  const { data: historicalSignals, isLoading: historicalLoading, error: historicalError } = useQuery<HistoricalTrade[]>({
+    queryKey: ["historical-signals"],
+    queryFn: async () => {
+      const res = await fetch(`${apiBaseUrl}/api/signals/historical`);
+      if (!res.ok) throw new Error("Failed to fetch historical signals");
+      return res.json();
+    },
+    refetchInterval: 300000, // Refresh every 5 minutes
+    enabled: !!apiBaseUrl,
+  });
+
+  const { data: currentMarkets, isLoading: currentLoading, error: currentError } = useQuery<any[]>({
+    queryKey: ["current-markets"],
+    queryFn: async () => {
+      const res = await fetch(`${apiBaseUrl}/data`);
+      if (!res.ok) throw new Error("Failed to fetch current markets");
+      const data = await res.json();
+      return data.marketOutlook || [];
     },
     refetchInterval: 60000,
     enabled: !!apiBaseUrl,
@@ -141,6 +175,14 @@ const SignalPerformance = () => {
     <div className="min-h-screen bg-black text-green-400">
       <SiteHeader />
       
+      {/* Disclaimer */}
+      <div className="bg-yellow-900/20 border border-yellow-500/50 p-4 mx-auto max-w-5xl mt-4">
+        <div className="text-center">
+          <p className="text-yellow-400 font-semibold text-sm">⚠️ DISCLAIMER: NOT FINANCIAL ADVICE</p>
+          <p className="text-yellow-300 text-xs mt-1">This is pure experimental AI analysis and market mathematics. Not investment advice. Markets are highly unpredictable. Trade at your own risk.</p>
+        </div>
+      </div>
+      
       <main className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
@@ -153,11 +195,32 @@ const SignalPerformance = () => {
               size="sm"
               onClick={() => {
                 const exportData = {
-                  signalPerf,
-                  recentSignals,
-                  aggregatePnL,
-                  categoryPnL,
-                  exportedAt: new Date().toISOString()
+                  currentBondingMarkets: currentMarkets?.map((signal, index) => ({
+                    id: `current-${index}`,
+                    marketQuestion: signal.marketQuestion || signal.market,
+                    action: "BUY YES",
+                    edge: signal.effectiveEdge || 0,
+                    confidence: signal.confidence || signal.confidenceScore || 0,
+                    timestamp: signal.timestamp || new Date().toISOString(),
+                    probZigma: signal.probZigma || 0,
+                    probMarket: signal.probMarket || 0,
+                    link: signal.link,
+                    type: "BONDING_MARKET"
+                  })) || [],
+                  historicalExecutableTrades: historicalSignals?.map((trade, index) => ({
+                    id: `historical-${index}`,
+                    marketQuestion: trade.marketQuestion,
+                    action: trade.action,
+                    price: trade.price,
+                    edge: trade.edge,
+                    confidence: trade.confidence,
+                    tradeTier: trade.tradeTier,
+                    timestamp: trade.timestamp,
+                    link: trade.link,
+                    type: "HISTORICAL_EXECUTABLE"
+                  })) || [],
+                  exportedAt: new Date().toISOString(),
+                  disclaimer: "NOT FINANCIAL ADVICE - This is pure experimental AI analysis and market mathematics. Not investment advice. Markets are highly unpredictable. Trade at your own risk."
                 };
                 exportToJSON(exportData, `zigma-signals-${new Date().toISOString().split('T')[0]}`);
               }}
@@ -227,149 +290,87 @@ const SignalPerformance = () => {
           </Card>
         </div>
 
-        {/* Performance Overview */}
+        {/* Historical Trades */}
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-            Performance Overview
+            <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>
+            Current Bonding Markets
           </h2>
           
-          {perfLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => (
-                <Card key={i} className="border-green-500/30 bg-black/40">
-                  <CardHeader>
-                    <Skeleton className="h-4 w-24 bg-green-500/20" />
-                    <Skeleton className="h-3 w-32 bg-green-500/10" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-8 w-16 bg-green-500/20" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (!signalPerf || signalPerf.totalSignals === 0) ? (
-            <Card className="border-yellow-500/30 bg-black/40">
-              <CardContent className="pt-6">
-                <p className="text-yellow-400 mb-2">No signals generated yet.</p>
-                <p className="text-xs text-muted-foreground">Signal performance metrics will appear once Zigma starts generating signals. Check back after the next cycle.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="border-green-500/30 bg-black/40">
-                <CardHeader>
-                  <CardTitle className="text-sm text-green-400">Total Signals</CardTitle>
-                  <CardDescription>All signals generated</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-green-400">
-                    {signalPerf?.totalSignals || 0}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {signalPerf?.pendingSignals || 0} pending
-                  </p>
-                </CardContent>
-              </Card>
-              
-              <Card className="border-green-500/30 bg-black/40">
-                <CardHeader>
-                  <CardTitle className="text-sm text-green-400">Accuracy</CardTitle>
-                  <CardDescription>Correct predictions</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-3xl font-bold ${(signalPerf?.accuracy || 0) > 0.5 ? 'text-green-400' : 'text-red-400'}`}>
-                    {((signalPerf?.accuracy || 0) * 100).toFixed(1)}%
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {signalPerf?.correctSignals || 0} / {signalPerf?.resolvedSignals || 0}
-                  </p>
-                </CardContent>
-              </Card>
-              
-              <Card className="border-green-500/30 bg-black/40">
-                <CardHeader>
-                  <CardTitle className="text-sm text-green-400">Avg Confidence</CardTitle>
-                  <CardDescription>Model confidence</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-green-400">
-                    {signalPerf?.avgConfidence?.toFixed(1) || 0}%
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="border-green-500/30 bg-black/40">
-                <CardHeader>
-                  <CardTitle className="text-sm text-green-400">Avg Edge</CardTitle>
-                  <CardDescription>Average edge</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-green-400">
-                    {(signalPerf?.avgEdge || 0).toFixed(2)}%
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </div>
-
-        {/* Recent Signals */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-            Recent Signals
-          </h2>
-          
-          {signalsLoading ? (
+          {currentLoading ? (
             <Card className="border-green-500/30 bg-black/40">
               <CardContent className="pt-6">
                 <Skeleton className="h-64 bg-green-500/10" />
               </CardContent>
             </Card>
-          ) : (!recentSignals || recentSignals.length === 0) ? (
+          ) : (!currentMarkets || currentMarkets.length === 0) ? (
             <Card className="border-yellow-500/30 bg-black/40">
               <CardContent className="pt-6">
-                <p className="text-yellow-400 mb-2">No recent signals available.</p>
-                <p className="text-xs text-muted-foreground">Recent signals will appear here as Zigma analyzes markets. Signals are generated every ~15 minutes.</p>
+                <p className="text-yellow-400 mb-2">No current bonding markets available.</p>
+                <p className="text-xs text-muted-foreground">Current bonding markets will appear here once available.</p>
               </CardContent>
             </Card>
           ) : (
             <Card className="border-green-500/30 bg-black/40">
               <CardHeader>
-                <CardTitle className="text-sm text-green-400">Latest Signals</CardTitle>
-                <CardDescription>Most recent signal predictions</CardDescription>
+                <CardTitle className="text-sm text-green-400">Live Bonding Markets</CardTitle>
+                <CardDescription>Current high-probability markets (95%+) from latest analysis</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentSignals && recentSignals.length > 0 ? (
-                    recentSignals
+                  {currentMarkets && currentMarkets.length > 0 ? (
+                    currentMarkets
                       .filter(signal => 
                         searchQuery === '' || 
-                        signal.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        signal.category.toLowerCase().includes(searchQuery.toLowerCase())
+                        signal.marketQuestion?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        signal.market?.toLowerCase().includes(searchQuery.toLowerCase())
                       )
-                      .map((signal) => (
-                      <div key={signal.id} className="border-b border-green-500/10 pb-4 last:border-0 last:pb-0">
+                      .map((signal, index) => (
+                      <div key={`current-${index}`} className="border-b border-green-500/10 pb-4 last:border-0 last:pb-0">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
                             <p className="text-sm font-medium text-green-400 mb-1">
-                              {signal.question}
+                              {signal.marketQuestion || signal.market}
                             </p>
                             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                              <span className="px-2 py-0.5 bg-green-500/10 rounded">{signal.category}</span>
-                              <span>{new Date(signal.timestamp).toLocaleString()}</span>
+                              <span className="px-2 py-0.5 bg-yellow-500/10 rounded text-yellow-400">BONDING</span>
+                              <span>{new Date(signal.timestamp || Date.now()).toLocaleString()}</span>
+                              {signal.marketQuestion?.includes('2026') && (
+                                <span className="px-2 py-0.5 bg-blue-500/10 rounded text-blue-400">LONG-TERM</span>
+                              )}
                             </div>
+                            {signal.link && (
+                              <a 
+                                href={signal.link} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-400 hover:text-blue-300 underline"
+                              >
+                                View on Polymarket →
+                              </a>
+                            )}
                           </div>
                           <div className="text-right">
-                            {getOutcomeBadge(signal)}
+                            <Badge className="bg-yellow-500 hover:bg-yellow-600 mb-1">BONDING</Badge>
+                            <div className="text-sm mt-1">
+                              <span className="text-muted-foreground">Action:</span>{' '}
+                              <span className="text-green-400">BUY YES</span>
+                            </div>
                             <div className="text-sm mt-1">
                               <span className="text-muted-foreground">Edge:</span>{' '}
-                              <span className="text-green-400">{signal.edge.toFixed(2)}%</span>
+                              <span className="text-green-400">{(signal.effectiveEdge || 0).toFixed(2)}%</span>
                             </div>
                             <div className="text-sm">
                               <span className="text-muted-foreground">Conf:</span>{' '}
-                              <span className="text-green-400">{signal.confidenceScore?.toFixed(0) ?? '—'}%</span>
+                              <span className="text-green-400">{(signal.confidence || signal.confidenceScore || 0).toFixed(0)}%</span>
+                            </div>
+                            <div className="text-sm">
+                              <span className="text-muted-foreground">AI:</span>{' '}
+                              <span className="text-green-400">{(signal.probZigma || 0).toFixed(1)}%</span>
+                            </div>
+                            <div className="text-sm">
+                              <span className="text-muted-foreground">Market:</span>{' '}
+                              <span className="text-green-400">{(signal.probMarket || 0).toFixed(1)}%</span>
                             </div>
                           </div>
                         </div>
@@ -377,7 +378,7 @@ const SignalPerformance = () => {
                     ))
                   ) : (
                     <p className="text-muted-foreground text-center py-8">
-                      No signals available yet
+                      No current bonding markets available
                     </p>
                   )}
                 </div>
@@ -386,206 +387,109 @@ const SignalPerformance = () => {
           )}
         </div>
 
-        {/* Best & Worst Signals */}
+        {/* Historical Trades */}
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-            Top Performances
+            <span className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></span>
+            Historical Executable Trades
           </h2>
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {historicalLoading ? (
             <Card className="border-green-500/30 bg-black/40">
-              <CardHeader>
-                <CardTitle className="text-sm text-green-400">Best Signals</CardTitle>
-                <CardDescription>Highest edge signals</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {signalPerf?.bestSignals && signalPerf.bestSignals.length > 0 ? (
-                    signalPerf.bestSignals.slice(0, 5).map((signal) => (
-                      <div key={signal.id} className="flex items-center justify-between text-sm p-2 bg-green-500/5 rounded">
-                        <span className="text-muted-foreground truncate flex-1 mr-2">
-                          {signal.question.substring(0, 50)}...
-                        </span>
-                        <span className="text-green-400 font-mono">{signal.edge.toFixed(2)}%</span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-muted-foreground text-center py-4">No data available</p>
-                  )}
-                </div>
+              <CardContent className="pt-6">
+                <Skeleton className="h-64 bg-green-500/10" />
               </CardContent>
             </Card>
-            
-            <Card className="border-green-500/30 bg-black/40">
-              <CardHeader>
-                <CardTitle className="text-sm text-red-400">Lowest Edge</CardTitle>
-                <CardDescription>Signals with lowest edge</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {signalPerf?.worstSignals && signalPerf.worstSignals.length > 0 ? (
-                    signalPerf.worstSignals.slice(0, 5).map((signal) => (
-                      <div key={signal.id} className="flex items-center justify-between text-sm p-2 bg-red-500/5 rounded">
-                        <span className="text-muted-foreground truncate flex-1 mr-2">
-                          {signal.question.substring(0, 50)}...
-                        </span>
-                        <span className="text-red-400 font-mono">{signal.edge.toFixed(2)}%</span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-muted-foreground text-center py-4">No data available</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Hypothetical P&L */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-            Hypothetical P&L
-            <span className="text-xs text-muted-foreground font-normal">(Based on $100 per signal)</span>
-          </h2>
-          
-          {pnlLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => (
-                <Card key={i} className="border-green-500/30 bg-black/40">
-                  <CardHeader>
-                    <Skeleton className="h-4 w-24 bg-green-500/20" />
-                    <Skeleton className="h-3 w-32 bg-green-500/10" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-8 w-16 bg-green-500/20" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (!aggregatePnL || aggregatePnL.totalPnL === 0) ? (
+          ) : (!historicalSignals || historicalSignals.length === 0) ? (
             <Card className="border-yellow-500/30 bg-black/40">
               <CardContent className="pt-6">
-                <p className="text-yellow-400 mb-2">No settled trades for P&L calculation.</p>
-                <p className="text-xs text-muted-foreground">Hypothetical P&L will populate as markets resolve. This is based on $100 per signal position size.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="border-green-500/30 bg-black/40">
-                <CardHeader>
-                  <CardTitle className="text-sm text-green-400">Total P&L</CardTitle>
-                  <CardDescription>Hypothetical profit/loss</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-3xl font-bold ${(aggregatePnL?.totalPnL || 0) > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    ${(aggregatePnL?.totalPnL || 0).toFixed(2)}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {aggregatePnL?.settledSignals || 0} settled trades
-                  </p>
-                </CardContent>
-              </Card>
-              
-              <Card className="border-green-500/30 bg-black/40">
-                <CardHeader>
-                  <CardTitle className="text-sm text-green-400">Win Rate</CardTitle>
-                  <CardDescription>Winning percentage</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-3xl font-bold ${(aggregatePnL?.winRate || 0) > 0.5 ? 'text-green-400' : 'text-red-400'}`}>
-                    {((aggregatePnL?.winRate || 0) * 100).toFixed(1)}%
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {aggregatePnL?.winningSignals || 0}W / {aggregatePnL?.losingSignals || 0}L
-                  </p>
-                </CardContent>
-              </Card>
-              
-              <Card className="border-green-500/30 bg-black/40">
-                <CardHeader>
-                  <CardTitle className="text-sm text-green-400">Profit Factor</CardTitle>
-                  <CardDescription>Gross profit / gross loss</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-3xl font-bold ${(aggregatePnL?.profitFactor || 0) > 1 ? 'text-green-400' : 'text-red-400'}`}>
-                    {(aggregatePnL?.profitFactor || 0).toFixed(2)}
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="border-green-500/30 bg-black/40">
-                <CardHeader>
-                  <CardTitle className="text-sm text-green-400">Sharpe Ratio</CardTitle>
-                  <CardDescription>Risk-adjusted return</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-3xl font-bold ${(aggregatePnL?.sharpeRatio || 0) > 1 ? 'text-green-400' : 'text-yellow-400'}`}>
-                    {(aggregatePnL?.sharpeRatio || 0).toFixed(3)}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </div>
-
-        {/* Category P&L */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-            P&L by Category
-          </h2>
-          
-          {catPnLLoading ? (
-            <Card className="border-green-500/30 bg-black/40">
-              <CardContent className="pt-6">
-                <Skeleton className="h-32 bg-green-500/10" />
-              </CardContent>
-            </Card>
-          ) : (!categoryPnL || Object.keys(categoryPnL).length === 0) ? (
-            <Card className="border-yellow-500/30 bg-black/40">
-              <CardContent className="pt-6">
-                <p className="text-yellow-400 mb-2">No category P&L data available.</p>
-                <p className="text-xs text-muted-foreground">Category breakdown will appear once you have settled trades across different market types.</p>
+                <p className="text-yellow-400 mb-2">No historical trades available.</p>
+                <p className="text-xs text-muted-foreground">Historical executable trades will appear here once available.</p>
               </CardContent>
             </Card>
           ) : (
             <Card className="border-green-500/30 bg-black/40">
               <CardHeader>
-                <CardTitle className="text-sm text-green-400">Category Performance</CardTitle>
-                <CardDescription>Hypothetical P&L by market category</CardDescription>
+                <CardTitle className="text-sm text-green-400">Past Executable Trades</CardTitle>
+                <CardDescription>All historical executable trades with positive edge</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {categoryPnL && Object.keys(categoryPnL).length > 0 ? (
-                    Object.entries(categoryPnL).map(([category, stats]) => (
-                      <div key={category} className="flex items-center justify-between p-3 bg-green-500/5 rounded">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3">
-                            <span className="text-sm font-medium text-green-400">{category}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {stats.settledSignals} settled
-                            </span>
+                <div className="space-y-4">
+                  {historicalSignals && historicalSignals.length > 0 ? (
+                    historicalSignals
+                      .filter(signal => 
+                        searchQuery === '' || 
+                        signal.marketQuestion.toLowerCase().includes(searchQuery.toLowerCase())
+                      )
+                      .map((signal, index) => (
+                      <div key={`historical-${index}`} className="border-b border-green-500/10 pb-4 last:border-0 last:pb-0">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-green-400 mb-1">
+                              {signal.marketQuestion}
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                              <span className="px-2 py-0.5 bg-blue-500/10 rounded text-blue-400">MANUAL</span>
+                              <span>{new Date(signal.timestamp).toLocaleString()}</span>
+                              {signal.tradeTier && (
+                                <span className="px-2 py-0.5 bg-green-500/10 rounded text-green-400">
+                                  {signal.tradeTier.replace('_', ' ')}
+                                </span>
+                              )}
+                            </div>
+                            {signal.link && (
+                              <a 
+                                href={signal.link} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-400 hover:text-blue-300 underline"
+                              >
+                                View on Polymarket →
+                              </a>
+                            )}
                           </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Win Rate: {(stats.winRate * 100).toFixed(1)}% | Avg Edge: {stats.avgEdge.toFixed(2)}%
+                          <div className="text-right">
+                            <Badge className="bg-blue-500 hover:bg-blue-600 mb-1">EXECUTED</Badge>
+                            <div className="text-sm mt-1">
+                              <span className="text-muted-foreground">Action:</span>{' '}
+                              <span className="text-green-400">{signal.action}</span>
+                            </div>
+                            <div className="text-sm mt-1">
+                              <span className="text-muted-foreground">Edge:</span>{' '}
+                              <span className="text-green-400">{signal.edge.toFixed(2)}%</span>
+                            </div>
+                            <div className="text-sm">
+                              <span className="text-muted-foreground">Conf:</span>{' '}
+                              <span className="text-green-400">{signal.confidence?.toFixed(0) ?? '—'}%</span>
+                            </div>
+                            <div className="text-sm">
+                              <span className="text-muted-foreground">Price:</span>{' '}
+                              <span className="text-green-400">{(signal.price * 100).toFixed(1)}%</span>
+                            </div>
                           </div>
-                        </div>
-                        <div className={`text-lg font-bold ${stats.totalPnL > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          ${stats.totalPnL.toFixed(2)}
                         </div>
                       </div>
                     ))
                   ) : (
-                    <p className="text-muted-foreground text-center py-8">No data available</p>
+                    <p className="text-muted-foreground text-center py-8">
+                      No historical trades available
+                    </p>
                   )}
                 </div>
               </CardContent>
             </Card>
           )}
         </div>
-      </main>
+
+        </main>
+
+      {/* Disclaimer */}
+      <div className="bg-yellow-900/20 border border-yellow-500/50 p-4 mx-auto max-w-5xl mt-8 mb-4">
+        <div className="text-center">
+          <p className="text-yellow-400 font-semibold text-sm">⚠️ DISCLAIMER: NOT FINANCIAL ADVICE</p>
+          <p className="text-yellow-300 text-xs mt-1">This is pure experimental AI analysis and market mathematics. Not investment advice. Markets are highly unpredictable. Trade at your own risk.</p>
+        </div>
+      </div>
 
       <Footer />
     </div>

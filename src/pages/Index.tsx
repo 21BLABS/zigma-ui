@@ -887,8 +887,8 @@ const Index = () => {
           {marketOutlook.length > 0 && (
             <div className="bg-gray-900 border border-yellow-400/30 p-4 watchlist-section">
               <div className="mb-4">
-                <h2 className="text-lg mb-2">🟡 WATCHLIST</h2>
-                <p className="text-xs text-gray-400">High-confidence views for monitoring. Not yet executable due to liquidity, time decay, or volatility.</p>
+                <h2 className="text-lg mb-2">🟡 BONDING MARKETS</h2>
+                <p className="text-xs text-gray-400">High-probability markets (95%+) with minimal edge. These are essentially sure shots.</p>
               </div>
               <div className="space-y-4">
                 {marketOutlook.map((signal, index) => (
@@ -928,7 +928,9 @@ const Index = () => {
                     </div>
                     <div className="mt-2 text-sm">
                       <span className="text-muted-foreground">Action:</span>{' '}
-                      <span className="text-yellow-400">No Signal / Watch</span>
+                      <span className="font-semibold text-green-400">
+                        BUY YES
+                      </span>
                     </div>
                   </div>
                 ))}

@@ -7,6 +7,7 @@ import { NotificationBell } from "@/components/NotificationSystem";
 const primaryNavItems = [
   { label: "Home", to: "/" },
   { label: "Chat", to: "/chat" },
+  { label: "Signals", to: "/signals" },
   { label: "Manifesto", to: "/manifesto" },
 ];
 

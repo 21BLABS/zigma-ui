@@ -7,12 +7,12 @@ const Footer = () => {
   ];
 
   const pageLinks = [
-    { label: "Analytics", to: "/analytics" },
+    { label: "Analytics", to: "/analytics", disabled: true },
     { label: "Signals", to: "/signals" },
-    { label: "Backtesting", to: "/backtesting" },
-    { label: "Visualization", to: "/visualization" },
-    { label: "Paper Trading", to: "/paper-trading" },
-    { label: "Watchlist", to: "/watchlist" },
+    { label: "Backtesting", to: "/backtesting", disabled: true },
+    { label: "Visualization", to: "/visualization", disabled: true },
+    { label: "Paper Trading", to: "/paper-trading", disabled: true },
+    { label: "Watchlist", to: "/watchlist", disabled: true },
   ];
 
   const publicLinks = [
@@ -48,11 +48,16 @@ const Footer = () => {
                 {link.label}
               </a>
             ))}
-            <span className="text-yellow-400/60">(SOON)</span>
             {pageLinks.map((link) => (
-              <span key={link.label} className="text-yellow-400/60 cursor-not-allowed">
-                {link.label}
-              </span>
+              link.disabled ? (
+                <span key={link.label} className="text-yellow-400/60 cursor-not-allowed">
+                  {link.label}
+                </span>
+              ) : (
+                <Link key={link.label} to={link.to} className="terminal-link">
+                  {link.label}
+                </Link>
+              )
             ))}
             {publicLinks.map((link) => (
               <Link key={link.label} to={link.to} className="terminal-link">
