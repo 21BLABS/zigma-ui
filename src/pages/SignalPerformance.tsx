@@ -202,7 +202,7 @@ const SignalPerformance = () => {
               size="sm"
               onClick={() => {
                 const exportData = {
-                  currentBondingMarkets: currentMarkets?.map((signal, index) => ({
+                  currentMarketOutlooks: currentMarkets?.map((signal, index) => ({
                     id: `current-${index}`,
                     marketQuestion: signal.marketQuestion || signal.market,
                     action: "BUY YES",
@@ -212,7 +212,7 @@ const SignalPerformance = () => {
                     probZigma: signal.probZigma || 0,
                     probMarket: signal.probMarket || 0,
                     link: signal.link,
-                    type: "BONDING_MARKET"
+                    type: "MARKET_OUTLOOK"
                   })) || [],
                   historicalExecutableTrades: historicalSignals?.map((trade, index) => ({
                     id: `historical-${index}`,
@@ -301,7 +301,7 @@ const SignalPerformance = () => {
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
             <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>
-            Current Bonding Markets
+            Market Outlooks
           </h2>
           
           {currentLoading ? (
@@ -313,15 +313,15 @@ const SignalPerformance = () => {
           ) : (!currentMarkets || currentMarkets.length === 0) ? (
             <Card className="border-yellow-500/30 bg-black/40">
               <CardContent className="pt-6">
-                <p className="text-yellow-400 mb-2">No current bonding markets available.</p>
-                <p className="text-xs text-muted-foreground">Current bonding markets will appear here once available.</p>
+                <p className="text-yellow-400 mb-2">No current market outlooks available.</p>
+                <p className="text-xs text-muted-foreground">Current market outlooks will appear here once available.</p>
               </CardContent>
             </Card>
           ) : (
             <Card className="border-green-500/30 bg-black/40">
               <CardHeader>
-                <CardTitle className="text-sm text-green-400">Live Bonding Markets</CardTitle>
-                <CardDescription>Current high-probability markets (95%+) from latest analysis</CardDescription>
+                <CardTitle className="text-sm text-green-400">Market Outlooks</CardTitle>
+                <CardDescription>Current markets with analysis but no executable edge</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -340,7 +340,7 @@ const SignalPerformance = () => {
                               {signal.marketQuestion || signal.market}
                             </p>
                             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                              <span className="px-2 py-0.5 bg-yellow-500/10 rounded text-yellow-400">BONDING</span>
+                              <span className="px-2 py-0.5 bg-yellow-500/10 rounded text-yellow-400">OUTLOOK</span>
                               <span>{new Date(signal.timestamp || Date.now()).toLocaleString()}</span>
                               {signal.marketQuestion?.includes('2026') && (
                                 <span className="px-2 py-0.5 bg-blue-500/10 rounded text-blue-400">LONG-TERM</span>
@@ -358,7 +358,7 @@ const SignalPerformance = () => {
                             )}
                           </div>
                           <div className="text-right">
-                            <Badge className="bg-yellow-500 hover:bg-yellow-600 mb-1">BONDING</Badge>
+                            <Badge className="bg-yellow-500 hover:bg-yellow-600 mb-1">OUTLOOK</Badge>
                             <div className="text-sm mt-1">
                               <span className="text-muted-foreground">Action:</span>{' '}
                               <span className="text-green-400">BUY YES</span>

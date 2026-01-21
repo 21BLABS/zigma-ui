@@ -885,10 +885,10 @@ const Index = () => {
 
           {/* Market Outlook */}
           {marketOutlook.length > 0 && (
-            <div className="bg-gray-900 border border-yellow-400/30 p-4 watchlist-section">
+            <div className="bg-gray-900 border border-yellow-400/30 p-4 outlook-section">
               <div className="mb-4">
-                <h2 className="text-lg mb-2">🟡 BONDING MARKETS</h2>
-                <p className="text-xs text-gray-400">High-probability markets (95%+) with minimal edge. These are essentially sure shots.</p>
+                <h2 className="text-lg mb-2">🟡 OUTLOOKS (NO TRADE NOW)</h2>
+                <p className="text-xs text-gray-400">Markets with analysis but no executable edge. Monitoring for opportunity changes.</p>
               </div>
               <div className="space-y-4">
                 {marketOutlook.map((signal, index) => (
