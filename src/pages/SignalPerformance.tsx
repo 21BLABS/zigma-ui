@@ -24,15 +24,22 @@ interface Signal {
   id: string;
   marketId: string;
   question: string;
+  marketQuestion?: string;
   category: string;
   predictedProbability: number;
   confidenceScore: number;
+  confidence?: number;
   edge: number;
   timestamp: string;
   outcome?: 'YES' | 'NO';
   settledAt?: string;
   zigmaOdds?: number;
   marketOdds?: number;
+  action?: string;
+  price?: number;
+  link?: string;
+  source?: string;
+  status?: string;
 }
 
 interface SignalPerformance {
@@ -379,6 +386,97 @@ const SignalPerformance = () => {
                   ) : (
                     <p className="text-muted-foreground text-center py-8">
                       No current bonding markets available
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Executable Trades */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+            Current Executable Trades
+          </h2>
+          
+          {signalsLoading ? (
+            <Card className="border-green-500/30 bg-black/40">
+              <CardContent className="pt-6">
+                <Skeleton className="h-64 bg-green-500/10" />
+              </CardContent>
+            </Card>
+          ) : (!recentSignals || recentSignals.length === 0) ? (
+            <Card className="border-yellow-500/30 bg-black/40">
+              <CardContent className="pt-6">
+                <p className="text-yellow-400 mb-2">No executable trades available.</p>
+                <p className="text-xs text-muted-foreground">Executable trades will appear here once Zigma identifies opportunities.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border-green-500/30 bg-black/40">
+              <CardHeader>
+                <CardTitle className="text-sm text-green-400">Live Executable Trades</CardTitle>
+                <CardDescription>Current executable trades with confirmed edge and liquidity</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {recentSignals && recentSignals.length > 0 ? (
+                    recentSignals
+                      .filter(signal => 
+                        searchQuery === '' || 
+                        signal.marketQuestion?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        signal.question?.toLowerCase().includes(searchQuery.toLowerCase())
+                      )
+                      .map((signal, index) => (
+                      <div key={`executable-${index}`} className="border-b border-green-500/10 pb-4 last:border-0 last:pb-0">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-green-400 mb-1">
+                              {signal.marketQuestion || signal.question}
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                              <span className="px-2 py-0.5 bg-green-500/10 rounded text-green-400">EXECUTABLE</span>
+                              <span>{new Date(signal.timestamp || Date.now()).toLocaleString()}</span>
+                              <span className="px-2 py-0.5 bg-blue-500/10 rounded text-blue-400">{signal.category}</span>
+                            </div>
+                            {signal.link && (
+                              <a 
+                                href={signal.link} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-400 hover:text-blue-300 underline"
+                              >
+                                View on Polymarket →
+                              </a>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <Badge className="bg-green-500 hover:bg-green-600 mb-1">EXECUTABLE</Badge>
+                            <div className="text-sm mt-1">
+                              <span className="text-muted-foreground">Action:</span>{' '}
+                              <span className="text-green-400">{signal.action}</span>
+                            </div>
+                            <div className="text-sm mt-1">
+                              <span className="text-muted-foreground">Edge:</span>{' '}
+                              <span className="text-green-400">{signal.edge?.toFixed(2) || '0.00'}%</span>
+                            </div>
+                            <div className="text-sm">
+                              <span className="text-muted-foreground">Conf:</span>{' '}
+                              <span className="text-green-400">{signal.confidence?.toFixed(0) || '0'}%</span>
+                            </div>
+                            <div className="text-sm">
+                              <span className="text-muted-foreground">Price:</span>{' '}
+                              <span className="text-green-400">{(signal.price * 100)?.toFixed(1) || '0.0'}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground text-center py-8">
+                      No executable trades available
                     </p>
                   )}
                 </div>

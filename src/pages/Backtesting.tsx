@@ -26,6 +26,7 @@ interface BacktestResult {
   maxWin: number;
   maxLoss: number;
   sharpeRatio: number;
+  avgBrierScore: number;
   finalCapital: number;
   roi: number;
   rollingMetrics?: {
@@ -307,6 +308,21 @@ const Backtesting = () => {
               </h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="border-green-500/30 bg-black/40">
+                  <CardHeader>
+                    <CardTitle className="text-sm text-green-400">Brier Score</CardTitle>
+                    <CardDescription>Probability calibration (lower is better)</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-3xl font-bold ${backtestResult.avgBrierScore < 0.2 ? 'text-green-400' : backtestResult.avgBrierScore < 0.3 ? 'text-yellow-400' : 'text-red-400'}`}>
+                      {backtestResult.avgBrierScore.toFixed(4)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {backtestResult.avgBrierScore < 0.2 ? 'Excellent' : backtestResult.avgBrierScore < 0.3 ? 'Good' : 'Needs improvement'}
+                    </p>
+                  </CardContent>
+                </Card>
+                
                 <Card className="border-green-500/30 bg-black/40">
                   <CardHeader>
                     <CardTitle className="text-sm text-green-400">Sharpe Ratio</CardTitle>
