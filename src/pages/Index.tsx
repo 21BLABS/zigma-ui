@@ -569,31 +569,8 @@ const Index = () => {
     <div className="min-h-screen bg-black text-green-400 font-mono">
       <SiteHeader />
       
-      {/* Global Loading Overlay */}
-      {isLoading && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-400 mx-auto mb-4"></div>
-            <p className="text-green-400 text-lg">Loading Zigma...</p>
-            <p className="text-gray-500 text-sm mt-2">Fetching market data and analysis</p>
-          </div>
-        </div>
-      )}
-      
-      {/* Error Display */}
-      {error && (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-red-900/90 border border-red-500 text-white px-6 py-4 rounded-lg z-50 max-w-md">
-          <p className="font-bold mb-2">⚠️ Error</p>
-          <p className="text-sm">{error}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="mt-4 bg-red-700 hover:bg-red-600 px-4 py-2 rounded text-sm"
-          >
-            Retry
-          </button>
-        </div>
-      )}
-      
+            
+            
       <main className="p-4">
       {/* Subtle CRT Effects */}
       <div className="fixed inset-0 bg-gradient-to-b from-transparent via-transparent to-black opacity-20 pointer-events-none" />
@@ -983,27 +960,7 @@ const Index = () => {
             </div>
           )}
 
-          {/* Backtest Stats */}
-          {backtestResults && !backtestResults.error && (
-            <div className="bg-gray-900 border border-cyan-400 p-4">
-              <h2 className="text-lg mb-2 text-cyan-300">📊 BACKTEST PERFORMANCE</h2>
-              <p className="text-xs text-muted-foreground mb-4">Historical edge validation on resolved markets. Lower Brier = better calibration.</p>
-              <pre className="text-xs text-cyan-400 whitespace-pre-wrap font-mono">
-                {backtestResults.summary}
-              </pre>
-              {backtestResults.results && backtestResults.results.length > 0 && (
-                <div className="mt-4">
-                  <p className="text-xs text-muted-foreground mb-2">Recent Results ({backtestResults.fullResults} total):</p>
-                  <div className="text-xs font-mono text-cyan-200 space-y-1 max-h-32 overflow-y-auto">
-                    {backtestResults.results.map((line: string, idx: number) => (
-                      <div key={idx}>{line}</div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
+          
         </div>
       </div>
 
