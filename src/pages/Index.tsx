@@ -3,7 +3,6 @@ import AntiAIManifesto from "@/components/SignalPhilosophy";
 import TokenUtility from "@/components/TokenUtility";
 import Footer from "@/components/Footer";
 import SiteHeader from "@/components/SiteHeader";
-import { OnboardingTour } from "@/components/OnboardingTour";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from 'react';
@@ -966,7 +965,6 @@ const Index = () => {
 
 
       <Footer />
-      <OnboardingTour />
       <OnboardingTutorial
         isOpen={showOnboarding}
         onClose={() => setShowOnboarding(false)}
