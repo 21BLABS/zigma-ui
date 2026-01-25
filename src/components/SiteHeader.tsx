@@ -3,16 +3,25 @@ import { NavLink } from "@/components/NavLink";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/NotificationSystem";
+import UserProfile from "@/components/UserProfile";
+import { useAuth } from "@/contexts/AuthContext";
+import { LogIn, ChevronDown, BookOpen, Settings } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const primaryNavItems = [
   { label: "Home", to: "/" },
   { label: "Chat", to: "/chat" },
   { label: "Signals", to: "/signals" },
-  { label: "Manifesto", to: "/manifesto" },
 ];
 
 const SiteHeader = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isAuthenticated, user } = useAuth();
 
   return (
     <header className="sticky top-0 z-40 border-b border-green-500/20 bg-black/80 backdrop-blur">
@@ -33,12 +42,56 @@ const SiteHeader = () => {
               {item.label}
             </NavLink>
           ))}
+          
+          {/* Docs Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger className="flex items-center gap-1 transition hover:text-green-300 text-green-400">
+              <BookOpen className="w-3 h-3" />
+              <span>Docs</span>
+              <ChevronDown className="w-3 h-3" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="bg-black border-green-500/30">
+              <DropdownMenuItem asChild>
+                <Link to="/docs" className="text-xs uppercase tracking-[0.15em]">Documentation</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/api-documentation" className="text-xs uppercase tracking-[0.15em]">API Documentation</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/sdk-guide" className="text-xs uppercase tracking-[0.15em]">SDK Guide</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/user-guide" className="text-xs uppercase tracking-[0.15em]">User Guide</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/manifesto" className="text-xs uppercase tracking-[0.15em]">Manifesto</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/faq" className="text-xs uppercase tracking-[0.15em]">FAQ</Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
           <span className="text-foreground/30">|</span>
           <span className="text-[10px] tracking-[0.2em] text-yellow-400/60">BASKET (SOON)</span>
         </nav>
 
         <div className="flex items-center gap-3">
           <NotificationBell />
+          {isAuthenticated && user ? (
+            <UserProfile />
+          ) : (
+            <Button
+              asChild
+              size="sm"
+              className="bg-green-500/10 border border-green-400/60 text-green-200 hover:bg-green-500/20 text-[10px] uppercase tracking-[0.2em] px-4 py-2"
+            >
+              <Link to="/auth">
+                <LogIn className="w-3 h-3 mr-2" />
+                Login
+              </Link>
+            </Button>
+          )}
           <a
             href="https://x.com/agentzigma"
             target="_blank"
@@ -49,16 +102,6 @@ const SiteHeader = () => {
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
             </svg>
           </a>
-          <Link
-            to="/settings"
-            className="p-2 text-gray-400 hover:text-white transition"
-            title="Settings"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </Link>
           <Button
             asChild
             size="sm"

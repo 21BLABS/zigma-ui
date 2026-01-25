@@ -19,8 +19,39 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell
 } from "recharts";
+
+interface PriceHistory {
+  timestamp: string;
+  price: number;
+}
+
+interface EdgeDistribution {
+  range: string;
+  count: number;
+}
+
+interface ConfidenceData {
+  low: number;
+  medium: number;
+  high: number;
+}
+
+interface VisualizationRiskMetrics {
+  uptime?: number;
+  counters?: any;
+  gauges?: any;
+  histograms?: any;
+  summaries?: any;
+  overallRisk?: number;
+  volatility?: number;
+  concentration?: number;
+  liquidity?: number;
+}
 
 interface RiskMetrics {
   sharpeRatio: number;
@@ -37,25 +68,13 @@ interface RiskMetrics {
 interface PerformanceData {
   timestamp: string;
   marketsFetched: number;
+  marketsAnalyzed: number;
   signalsGenerated: number;
   watchlist: number;
   outlook: number;
   rejected: number;
 }
 
-interface PortfolioRisk {
-  portfolioValue: number;
-  positionCount: number;
-  sectorCount: number;
-  maxPositionSize: number;
-  sectorDiversification: number;
-  sectorExposure: Record<string, number>;
-  concentration: Array<{
-    id: string;
-    size: number;
-    concentration: number;
-  }>;
-}
 
 interface AccuracyMetrics {
   totalSignals: number;
@@ -168,16 +187,6 @@ const Analytics = () => {
     enabled: !!apiBaseUrl,
   });
 
-  const { data: portfolioRisk, isLoading: portfolioRiskLoading, error: portfolioRiskError } = useQuery<PortfolioRisk>({
-    queryKey: ["portfolio-risk"],
-    queryFn: async () => {
-      const res = await fetch(`${apiBaseUrl}/api/risk-management/portfolio`);
-      if (!res.ok) throw new Error("Failed to fetch portfolio risk");
-      return res.json();
-    },
-    refetchInterval: 60000,
-    enabled: !!apiBaseUrl,
-  });
 
   const { data: accuracyMetrics, isLoading: accuracyLoading, error: accuracyError } = useQuery<AccuracyMetrics>({
     queryKey: ["accuracy-metrics"],
@@ -223,11 +232,149 @@ const Analytics = () => {
     enabled: !!apiBaseUrl,
   });
 
+  // Visualization queries
+  const { data: priceHistory, isLoading: priceLoading, error: priceError } = useQuery<PriceHistory[]>({
+    queryKey: ["price-history"],
+    queryFn: async () => {
+      console.log('Fetching price history from:', `${apiBaseUrl}/api/visualization/price-history`);
+      const res = await fetch(`${apiBaseUrl}/api/visualization/price-history`);
+      if (!res.ok) {
+        console.error('Price history fetch failed:', res.status, res.statusText);
+        throw new Error(`Failed to fetch price history: ${res.status}`);
+      }
+      const data = await res.json();
+      console.log('Price history data:', data);
+      return data;
+    },
+    refetchInterval: 30000,
+    enabled: !!apiBaseUrl,
+  });
+
+  const { data: edgeDistribution, isLoading: edgeLoading, error: edgeError } = useQuery<EdgeDistribution[]>({
+    queryKey: ["edge-distribution"],
+    queryFn: async () => {
+      console.log('Fetching edge distribution from:', `${apiBaseUrl}/api/visualization/edge-distribution`);
+      const res = await fetch(`${apiBaseUrl}/api/visualization/edge-distribution`);
+      if (!res.ok) {
+        console.error('Edge distribution fetch failed:', res.status, res.statusText);
+        throw new Error(`Failed to fetch edge distribution: ${res.status}`);
+      }
+      const data = await res.json();
+      console.log('Edge distribution data:', data);
+      return data;
+    },
+    refetchInterval: 60000,
+    enabled: !!apiBaseUrl,
+  });
+
+  const { data: confidenceData, isLoading: confLoading, error: confError } = useQuery<ConfidenceData>({
+    queryKey: ["confidence-data"],
+    queryFn: async () => {
+      console.log('Fetching confidence data from:', `${apiBaseUrl}/api/visualization/confidence`);
+      const res = await fetch(`${apiBaseUrl}/api/visualization/confidence`);
+      if (!res.ok) {
+        console.error('Confidence data fetch failed:', res.status, res.statusText);
+        throw new Error(`Failed to fetch confidence data: ${res.status}`);
+      }
+      const data = await res.json();
+      console.log('Confidence data:', data);
+      return data;
+    },
+    refetchInterval: 60000,
+    enabled: !!apiBaseUrl,
+  });
+
+  const { data: visualizationRiskMetrics, isLoading: vizRiskLoading, error: vizRiskError } = useQuery<VisualizationRiskMetrics>({
+    queryKey: ["visualization-risk-metrics"],
+    queryFn: async () => {
+      console.log('Fetching risk metrics from:', `${apiBaseUrl}/api/visualization/risk-metrics`);
+      const res = await fetch(`${apiBaseUrl}/api/visualization/risk-metrics`);
+      if (!res.ok) {
+        console.error('Risk metrics fetch failed:', res.status, res.statusText);
+        throw new Error(`Failed to fetch risk metrics: ${res.status}`);
+      }
+      const data = await res.json();
+      console.log('Risk metrics data:', data);
+      return data;
+    },
+    refetchInterval: 60000,
+    enabled: !!apiBaseUrl,
+  });
+
+  const COLORS = {
+    green: '#22c55e',
+    yellow: '#eab308',
+    red: '#ef4444',
+    blue: '#3b82f6',
+    purple: '#a855f7'
+  };
+
+  const confidencePieData = confidenceData ? [
+    { name: 'Low (0-50%)', value: confidenceData.low, color: COLORS.red },
+    { name: 'Medium (50-75%)', value: confidenceData.medium, color: COLORS.yellow },
+    { name: 'High (75-100%)', value: confidenceData.high, color: COLORS.green }
+  ] : [];
+
+  // Extract risk values safely from the API response
+  const getRiskValue = (riskMetrics: VisualizationRiskMetrics | undefined, field: string, defaultValue: number = 0) => {
+    if (!riskMetrics) return defaultValue;
+    
+    // Try to get the value from different possible structures
+    if (riskMetrics[field as keyof VisualizationRiskMetrics] !== undefined) {
+      return riskMetrics[field as keyof VisualizationRiskMetrics] as number;
+    }
+    
+    // Try nested in summaries
+    if (riskMetrics.summaries && riskMetrics.summaries[field] !== undefined) {
+      return riskMetrics.summaries[field];
+    }
+    
+    // Try nested in gauges
+    if (riskMetrics.gauges && riskMetrics.gauges[field] !== undefined) {
+      return riskMetrics.gauges[field];
+    }
+    
+    return defaultValue;
+  };
+
+  const overallRisk = getRiskValue(visualizationRiskMetrics, 'overallRisk', 25);
+  const volatility = getRiskValue(visualizationRiskMetrics, 'volatility', 35);
+  const concentration = getRiskValue(visualizationRiskMetrics, 'concentration', 45);
+  const liquidity = getRiskValue(visualizationRiskMetrics, 'liquidity', 30);
+
+  const getRiskColor = (risk: number) => {
+    if (risk < 30) return COLORS.green;
+    if (risk < 60) return COLORS.yellow;
+    return COLORS.red;
+  };
+
+  const getRiskLabel = (risk: number) => {
+    if (risk < 30) return 'LOW';
+    if (risk < 60) return 'MEDIUM';
+    return 'HIGH';
+  };
+
   return (
     <div className="min-h-screen bg-black text-green-400">
       <SiteHeader />
       
       <main className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Error Display */}
+        {(priceError || edgeError || confError || vizRiskError) && (
+          <div className="mb-6 p-4 border border-red-500/30 bg-red-500/10 rounded-lg">
+            <h3 className="text-red-400 font-semibold mb-2">Visualization API Issues</h3>
+            <div className="text-red-300 text-sm space-y-1">
+              {priceError && <p>• Price History: {priceError.message}</p>}
+              {edgeError && <p>• Edge Distribution: {edgeError.message}</p>}
+              {confError && <p>• Confidence Data: {confError.message}</p>}
+              {vizRiskError && <p>• Risk Metrics: {vizRiskError.message}</p>}
+            </div>
+            <p className="text-red-400 text-xs mt-2">
+              Please check if the backend server is running at {apiBaseUrl}
+            </p>
+          </div>
+        )}
+
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-4xl font-bold tracking-tight">ANALYTICS DASHBOARD</h1>
@@ -237,7 +384,6 @@ const Analytics = () => {
               onClick={() => {
                 const exportData = {
                   riskMetrics,
-                  portfolioRisk,
                   accuracyMetrics,
                   winLossMetrics,
                   calibrationMetrics,
@@ -355,107 +501,75 @@ const Analytics = () => {
           )}
         </div>
 
-        {/* Portfolio Risk Management */}
+        
+        {/* Live Signal Status */}
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
             <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-            Portfolio Risk Management
+            Live Signal Status
           </h2>
           
-          {portfolioRiskLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="border-green-500/30 bg-black/40">
-              <CardContent className="pt-6">
-                <Skeleton className="h-32 bg-green-500/10" />
+              <CardHeader>
+                <CardTitle className="text-sm text-green-400">Signals Generated</CardTitle>
+                <CardDescription>This cycle</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-green-400">
+                  {accuracyMetrics?.totalSignals || 0}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Active signals
+                </p>
               </CardContent>
             </Card>
-          ) : portfolioRiskError ? (
-            <Card className="border-red-500/30 bg-black/40">
-              <CardContent className="pt-6">
-                <p className="text-red-400">Failed to load portfolio risk data</p>
+            
+            <Card className="border-green-500/30 bg-black/40">
+              <CardHeader>
+                <CardTitle className="text-sm text-green-400">Avg Confidence</CardTitle>
+                <CardDescription>Model confidence</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-green-400">
+                  {calibrationMetrics?.avgPredictedConfidence?.toFixed(1) || 0}%
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Average prediction confidence
+                </p>
               </CardContent>
             </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="border-green-500/30 bg-black/40">
-                <CardHeader>
-                  <CardTitle className="text-sm text-green-400">Position Count</CardTitle>
-                  <CardDescription>Active positions</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-green-400">
-                    {portfolioRisk?.positionCount || 0}
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="border-green-500/30 bg-black/40">
-                <CardHeader>
-                  <CardTitle className="text-sm text-green-400">Max Position Size</CardTitle>
-                  <CardDescription>Largest position %</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-3xl font-bold ${(portfolioRisk?.maxPositionSize || 0) > 10 ? 'text-red-400' : 'text-green-400'}`}>
-                    {portfolioRisk?.maxPositionSize?.toFixed(2) || 0}%
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="border-green-500/30 bg-black/40">
-                <CardHeader>
-                  <CardTitle className="text-sm text-green-400">Sector Count</CardTitle>
-                  <CardDescription>Diversification</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-green-400">
-                    {portfolioRisk?.sectorCount || 0}
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="border-green-500/30 bg-black/40">
-                <CardHeader>
-                  <CardTitle className="text-sm text-green-400">Sector Diversification</CardTitle>
-                  <CardDescription>0-100 score</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-3xl font-bold ${(portfolioRisk?.sectorDiversification || 0) > 50 ? 'text-green-400' : 'text-yellow-400'}`}>
-                    {portfolioRisk?.sectorDiversification?.toFixed(0) || 0}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-          
-          {portfolioRisk && (
-            <div className="mt-4">
-              <Card className="border-green-500/30 bg-black/40">
-                <CardHeader>
-                  <CardTitle className="text-sm text-green-400">Sector Exposure</CardTitle>
-                  <CardDescription>Current exposure by sector</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {Object.entries(portfolioRisk.sectorExposure || {}).map(([sector, exposure]) => (
-                      <div key={sector} className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">{sector}</span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-32 h-2 bg-gray-800 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full transition-all ${exposure > 30 ? 'bg-red-400' : exposure > 20 ? 'bg-yellow-400' : 'bg-green-400'}`}
-                              style={{ width: `${Math.min(100, exposure)}%` }}
-                            />
-                          </div>
-                          <span className={`text-sm font-mono w-12 text-right ${exposure > 30 ? 'text-red-400' : exposure > 20 ? 'text-yellow-400' : 'text-green-400'}`}>
-                            {exposure.toFixed(1)}%
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+            
+            <Card className="border-green-500/30 bg-black/40">
+              <CardHeader>
+                <CardTitle className="text-sm text-green-400">Markets Analyzed</CardTitle>
+                <CardDescription>Per cycle</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-green-400">
+                  {performanceHistory?.data?.[performanceHistory.data.length - 1]?.marketsAnalyzed || 0}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Markets processed
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="border-green-500/30 bg-black/40">
+              <CardHeader>
+                <CardTitle className="text-sm text-green-400">Cycle Status</CardTitle>
+                <CardDescription>System status</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-green-400">
+                  🟢
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Active
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Performance History */}
@@ -480,14 +594,16 @@ const Analytics = () => {
           ) : (!accuracyMetrics || accuracyMetrics.totalSignals === 0) ? (
             <Card className="border-yellow-500/30 bg-black/40">
               <CardContent className="pt-6">
-                <p className="text-yellow-400 mb-2">No resolved signals yet.</p>
-                <p className="text-xs text-muted-foreground">Accuracy metrics will appear once signals start resolving. This typically takes 1-7 days depending on market timelines.</p>
+                <p className="text-yellow-400 mb-2">No signals generated yet.</p>
+                <p className="text-xs text-muted-foreground">Signal generation will begin on the next cycle. Check back in a few minutes.</p>
               </CardContent>
             </Card>
           ) : accuracyMetrics?.message ? (
-            <Card className="border-yellow-500/30 bg-black/40">
+            <Card className="border-blue-500/30 bg-black/40">
               <CardContent className="pt-6">
-                <p className="text-yellow-400">{accuracyMetrics.message}</p>
+                <p className="text-blue-400 mb-2">🔄 Signals are active and waiting for resolution.</p>
+                <p className="text-xs text-muted-foreground mb-3">Total Signals Generated: {accuracyMetrics?.totalSignals || 0}</p>
+                <p className="text-xs text-muted-foreground">Accuracy metrics will appear once markets resolve (typically 1-7 days).</p>
               </CardContent>
             </Card>
           ) : (
@@ -568,10 +684,10 @@ const Analytics = () => {
                 <p className="text-red-400">Failed to load win/loss metrics</p>
               </CardContent>
             </Card>
-          ) : (!winLossMetrics || winLossMetrics.winRate === 0) ? (
-            <Card className="border-yellow-500/30 bg-black/40">
+          ) : (!winLossMetrics || winLossMetrics.totalTrades === 0) ? (
+            <Card className="border-blue-500/30 bg-black/40">
               <CardContent className="pt-6">
-                <p className="text-yellow-400 mb-2">No settled trades yet.</p>
+                <p className="text-blue-400 mb-2">🔄 No settled trades yet.</p>
                 <p className="text-xs text-muted-foreground">Win/loss metrics will populate as markets resolve. Track your performance over time here.</p>
               </CardContent>
             </Card>
@@ -655,10 +771,10 @@ const Analytics = () => {
                 <p className="text-red-400">Failed to load category performance</p>
               </CardContent>
             </Card>
-          ) : (!categoryPerf || Object.keys(categoryPerf).length === 0) ? (
-            <Card className="border-yellow-500/30 bg-black/40">
+          ) : (!categoryPerf || !categoryPerf.categories || Object.keys(categoryPerf.categories).length === 0) ? (
+            <Card className="border-blue-500/30 bg-black/40">
               <CardContent className="pt-6">
-                <p className="text-yellow-400 mb-2">No category data available.</p>
+                <p className="text-blue-400 mb-2">🔄 No category data available.</p>
                 <p className="text-xs text-muted-foreground">Category breakdown will appear once you have resolved signals across different market types.</p>
               </CardContent>
             </Card>
@@ -749,9 +865,10 @@ const Analytics = () => {
               </CardContent>
             </Card>
           ) : calibrationMetrics?.message ? (
-            <Card className="border-yellow-500/30 bg-black/40">
+            <Card className="border-blue-500/30 bg-black/40">
               <CardContent className="pt-6">
-                <p className="text-yellow-400">{calibrationMetrics.message}</p>
+                <p className="text-blue-400 mb-2">🔄 {calibrationMetrics.message}</p>
+                <p className="text-xs text-muted-foreground">Confidence calibration will appear once signals start resolving.</p>
               </CardContent>
             </Card>
           ) : (
@@ -1135,6 +1252,255 @@ const Analytics = () => {
                   Maximum expected loss at a given confidence level (95% here). Estimates the worst loss 
                   in 95% of cases. Important for capital allocation and risk management.
                 </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Visualization Sections */}
+        {/* Real-time Price Chart */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+            Signal Price History
+          </h2>
+          
+          <Card className="border-green-500/30 bg-black/40">
+            <CardHeader>
+              <CardTitle className="text-sm text-green-400">Market Odds Over Time</CardTitle>
+              <CardDescription>Historical price movement for recent signals</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {priceLoading ? (
+                <Skeleton className="h-64 bg-green-500/10" />
+              ) : priceHistory && priceHistory.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={priceHistory}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#22c55e20" />
+                    <XAxis 
+                      dataKey="timestamp" 
+                      stroke="#22c55e"
+                      tick={{ fontSize: 12 }}
+                    />
+                    <YAxis stroke="#22c55e" tick={{ fontSize: 12 }} />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#000', 
+                        border: '1px solid #22c55e30',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="price" 
+                      stroke="#22c55e" 
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-muted-foreground text-center py-8">No price history available</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Edge Distribution */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+            Edge Distribution Analysis
+          </h2>
+          
+          <Card className="border-green-500/30 bg-black/40">
+            <CardHeader>
+              <CardTitle className="text-sm text-green-400">Signal Edge Distribution</CardTitle>
+              <CardDescription>Distribution of prediction confidence across all signals</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {edgeLoading ? (
+                <Skeleton className="h-64 bg-green-500/10" />
+              ) : edgeDistribution && edgeDistribution.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={edgeDistribution}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#22c55e20" />
+                    <XAxis 
+                      dataKey="range" 
+                      stroke="#22c55e"
+                      tick={{ fontSize: 12 }}
+                    />
+                    <YAxis stroke="#22c55e" tick={{ fontSize: 12 }} />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#000', 
+                        border: '1px solid #22c55e30',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Bar dataKey="count" fill="#22c55e" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-muted-foreground text-center py-8">No edge distribution data available</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Confidence and Risk Metrics */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Confidence Distribution */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+              Confidence Distribution
+            </h2>
+            
+            <Card className="border-green-500/30 bg-black/40">
+              <CardHeader>
+                <CardTitle className="text-sm text-green-400">Signal Confidence Levels</CardTitle>
+                <CardDescription>Distribution of confidence scores across all signals</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {confLoading ? (
+                  <Skeleton className="h-64 bg-green-500/10" />
+                ) : confidencePieData && confidencePieData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={confidencePieData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {confidencePieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: '#000', 
+                          border: '1px solid #22c55e30',
+                          borderRadius: '8px'
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-muted-foreground text-center py-8">No confidence data available</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Risk Metrics */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+              Risk Assessment
+            </h2>
+            
+            <Card className="border-green-500/30 bg-black/40">
+              <CardHeader>
+                <CardTitle className="text-sm text-green-400">Portfolio Risk Metrics</CardTitle>
+                <CardDescription>Current risk assessment and exposure analysis</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {vizRiskLoading ? (
+                  <Skeleton className="h-64 bg-green-500/10" />
+                ) : visualizationRiskMetrics ? (
+                  <div className="space-y-6">
+                    {/* Overall Risk Score */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="relative w-32 h-32">
+                          <svg className="transform -rotate-90 w-32 h-32">
+                            <circle
+                              cx="64"
+                              cy="64"
+                              r="40"
+                              fill="none"
+                              stroke="#22c55e20"
+                              strokeWidth="10"
+                            />
+                            <circle
+                              cx="64"
+                              cy="64"
+                              r="40"
+                              fill="none"
+                              stroke={getRiskColor(overallRisk)}
+                              strokeWidth="10"
+                              strokeDasharray={`${(overallRisk / 100) * 251.2} 251.2`}
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-4xl font-bold" style={{ color: getRiskColor(overallRisk) }}>
+                              {overallRisk.toFixed(0)}
+                            </span>
+                            <span className="text-sm text-muted-foreground">Risk Score</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <div className="space-y-3">
+                          <div>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span className="text-muted-foreground">Volatility</span>
+                              <span>{volatility.toFixed(0)}%</span>
+                            </div>
+                            <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full transition-all"
+                                style={{ 
+                                  width: `${volatility}%`,
+                                  backgroundColor: getRiskColor(volatility)
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span className="text-muted-foreground">Concentration</span>
+                              <span>{concentration.toFixed(0)}%</span>
+                            </div>
+                            <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full transition-all"
+                                style={{ 
+                                  width: `${concentration}%`,
+                                  backgroundColor: getRiskColor(concentration)
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex justify-between text-sm mb-1">
+                              <span className="text-muted-foreground">Liquidity Risk</span>
+                              <span>{liquidity.toFixed(0)}%</span>
+                            </div>
+                            <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full transition-all"
+                                style={{ 
+                                  width: `${liquidity}%`,
+                                  backgroundColor: getRiskColor(liquidity)
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-center py-8">No risk metrics available</p>
+                )}
               </CardContent>
             </Card>
           </div>

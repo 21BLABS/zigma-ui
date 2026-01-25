@@ -1,23 +1,37 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
+import { ChevronDown, BookOpen } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Footer = () => {
   const links = [
     { label: "X", href: "https://x.com/agentzigma" },
-    { label: "Telegram", href: "https://t.me/agentzigma" },
+    { label: "✈️", href: "https://t.me/agentzigma" },
   ];
 
   const pageLinks = [
-    { label: "Analytics", to: "/analytics", disabled: true },
-    { label: "Signals", to: "/signals" },
-    { label: "Backtesting", to: "/backtesting", disabled: true },
-    { label: "Visualization", to: "/visualization", disabled: true },
-    { label: "Paper Trading", to: "/paper-trading", disabled: true },
-    { label: "Watchlist", to: "/watchlist", disabled: true },
+    { label: "Analytics", to: "/analytics", disabled: false },
+    { label: "Signals", to: "/signals", disabled: false },
   ];
 
-  const publicLinks = [
-    { label: "Docs", to: "/docs" },
+const docsLinks = [
+    { label: "Documentation", to: "/docs" },
+    { label: "API Documentation", to: "/api-documentation" },
+    { label: "SDK Guide", to: "/sdk-guide" },
+    { label: "User Guide", to: "/user-guide" },
+    { label: "Manifesto", to: "/manifesto" },
+    { label: "FAQ", to: "/faq" },
   ];
+
+const otherLinks = [
+    { label: "Privacy Policy", to: "/privacy-policy" },
+    { label: "Terms of Service", to: "/terms-of-service" },
+];
 
   return (
     <>
@@ -59,7 +73,26 @@ const Footer = () => {
                 </Link>
               )
             ))}
-            {publicLinks.map((link) => (
+            
+            {/* Docs Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center gap-1 terminal-link text-green-400">
+                <BookOpen className="w-3 h-3" />
+                <span>Docs</span>
+                <ChevronDown className="w-3 h-3" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="bg-black border-green-500/30">
+                {docsLinks.map((link) => (
+                  <DropdownMenuItem key={link.to} asChild>
+                    <Link to={link.to} className="text-xs uppercase tracking-[0.15em]">
+                      {link.label}
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            {otherLinks.map((link) => (
               <Link key={link.label} to={link.to} className="terminal-link">
                 {link.label}
               </Link>
