@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
-import { ChevronDown, BookOpen } from "lucide-react";
+import { ChevronDown, BookOpen, Send } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +11,7 @@ import {
 const Footer = () => {
   const links = [
     { label: "X", href: "https://x.com/agentzigma" },
-    { label: "✈️", href: "https://t.me/agentzigma" },
+    { label: "", href: "https://t.me/agentzigma", icon: true },
   ];
 
   const pageLinks = [
@@ -57,8 +57,9 @@ const otherLinks = [
               <a
                 key={link.label}
                 href={link.href}
-                className="terminal-link"
+                className="terminal-link flex items-center gap-1"
               >
+                {link.icon && <Send className="w-3 h-3" />}
                 {link.label}
               </a>
             ))}

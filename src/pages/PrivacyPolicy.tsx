@@ -257,8 +257,8 @@ const PrivacyPolicy = () => {
                 <p className="text-sm text-muted-foreground">To exercise your rights:</p>
                 <ul className="text-sm text-muted-foreground space-y-1">
                   <li>• <strong>Account Settings</strong>: Self-service options in your dashboard</li>
-                  <li>• <strong>Email Request</strong>: privacy@zigma.ai</li>
-                  <li>• <strong>Data Protection Officer</strong>: dpo@zigma.ai</li>
+                  <li>• <strong>Email Request</strong>: neo@zigma.pro</li>
+                  <li>• <strong>Data Protection Officer</strong>: neo@zigma.pro</li>
                   <li>• <strong>Support Form</strong>: Submit requests through our help center</li>
                 </ul>
               </div>
@@ -367,15 +367,15 @@ const PrivacyPolicy = () => {
               <div className="bg-gray-950 border border-green-500/20 p-6 rounded-2xl">
                 <p className="text-lg text-green-200 font-semibold mb-3">Privacy Inquiries</p>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• <strong>Email</strong>: privacy@zigma.ai</li>
-                  <li>• <strong>Data Protection Officer</strong>: dpo@zigma.ai</li>
+                  <li>• <strong>Email</strong>: neo@zigma.pro</li>
+                  <li>• <strong>Data Protection Officer</strong>: neo@zigma.pro</li>
                   <li>• <strong>Response Time</strong>: Within 30 days for most requests</li>
                 </ul>
               </div>
               <div className="bg-gray-950 border border-green-500/20 p-6 rounded-2xl">
                 <p className="text-lg text-green-200 font-semibold mb-3">Complaints and Concerns</p>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• <strong>Internal Review</strong>: privacy@zigma.ai</li>
+                  <li>• <strong>Internal Review</strong>: neo@zigma.pro</li>
                   <li>• <strong>Regulatory Authorities</strong>: Contact your local data protection authority</li>
                   <li>• <strong>Third-Party Mediation</strong>: Available in some jurisdictions</li>
                 </ul>

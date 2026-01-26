@@ -105,6 +105,76 @@ export interface UserPreferences {
   updated_at: string;
 }
 
+export interface UserChatHistory {
+  id: string;
+  user_id: string;
+  session_id: string;
+  message_type: 'user_query' | 'zigma_response' | 'system_message' | 'error_message';
+  content: string;
+  query_type?: 'market_analysis' | 'user_profile' | 'general_query' | 'multi_market_comparison' | 'signal_request';
+  market_id?: string;
+  market_question?: string;
+  polymarket_user?: string;
+  response_type?: 'recommendation' | 'analysis' | 'user_profile_data' | 'comparison' | 'error';
+  recommendation_data?: Record<string, any>;
+  analysis_data?: Record<string, any>;
+  user_profile_data?: Record<string, any>;
+  comparison_data?: Record<string, any>;
+  processing_time_ms?: number;
+  context_used?: boolean;
+  context_id?: string;
+  user_rating?: number;
+  user_feedback?: string;
+  was_helpful?: boolean;
+  follow_up_queries?: string[];
+  metadata?: Record<string, any>;
+  api_version?: string;
+  client_info?: Record<string, any>;
+  ip_address?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatSession {
+  session_id: string;
+  last_message_at: string;
+  message_count: number;
+  last_message_preview: string;
+}
+
+export interface ChatAnalytics {
+  chat_date: string;
+  total_messages: number;
+  total_queries: number;
+  total_responses: number;
+  market_analysis_queries: number;
+  user_profile_queries: number;
+  recommendation_responses: number;
+  avg_processing_time_ms: number;
+  rated_messages: number;
+  avg_user_rating: number;
+  helpful_messages: number;
+  unique_sessions: number;
+  unique_markets_analyzed: number;
+}
+
+export interface ChatSummary {
+  total_messages: number;
+  total_queries: number;
+  total_responses: number;
+  total_sessions: number;
+  active_days: number;
+  first_chat_at: string;
+  last_chat_at: string;
+  avg_processing_time_ms: number;
+  rated_messages: number;
+  avg_user_rating: number;
+  helpful_messages: number;
+  unique_markets_analyzed: number;
+  market_analysis_count: number;
+  user_profile_count: number;
+}
+
 // Helper functions for database operations
 export const db = {
   // User operations
@@ -221,5 +291,177 @@ export const db = {
     
     if (error) throw error;
     return data;
+  },
+
+  // Chat history operations
+  async saveChatMessage(message: Partial<UserChatHistory>) {
+    const { data, error } = await supabase
+      .from('user_chat_history')
+      .insert(message)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  async getChatSession(userId: string, sessionId: string, limit = 100) {
+    const { data, error } = await supabase
+      .rpc('get_user_chat_session', {
+        p_user_id: userId,
+        p_session_id: sessionId,
+        p_limit: limit
+      });
+    
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getRecentChatSessions(userId: string, limit = 10) {
+    const { data, error } = await supabase
+      .rpc('get_user_recent_chat_sessions', {
+        p_user_id: userId,
+        p_limit: limit
+      });
+    
+    if (error) throw error;
+    return data || [];
+  },
+
+  async searchChatHistory(userId: string, searchQuery: string, limit = 50) {
+    const { data, error } = await supabase
+      .rpc('search_user_chat_history', {
+        p_user_id: userId,
+        p_search_query: searchQuery,
+        p_limit: limit
+      });
+    
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getChatAnalytics(userId: string, startDate?: string, endDate?: string) {
+    let query = supabase
+      .from('user_chat_analytics')
+      .select('*')
+      .eq('user_id', userId);
+    
+    if (startDate) {
+      query = query.gte('chat_date', startDate);
+    }
+    if (endDate) {
+      query = query.lte('chat_date', endDate);
+    }
+    
+    const { data, error } = await query.order('chat_date', { ascending: false });
+    
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getChatSummary(userId: string) {
+    const { data, error } = await supabase
+      .from('user_chat_summary')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  },
+
+  async updateChatMessageRating(messageId: string, rating: number, feedback?: string, wasHelpful?: boolean) {
+    const { data, error } = await supabase
+      .from('user_chat_history')
+      .update({
+        user_rating: rating,
+        user_feedback: feedback,
+        was_helpful: wasHelpful,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', messageId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteChatMessage(messageId: string) {
+    const { error } = await supabase
+      .from('user_chat_history')
+      .delete()
+      .eq('id', messageId);
+    
+    if (error) throw error;
+  },
+
+  async deleteChatSession(userId: string, sessionId: string) {
+    const { error } = await supabase
+      .from('user_chat_history')
+      .delete()
+      .eq('user_id', userId)
+      .eq('session_id', sessionId);
+    
+    if (error) throw error;
+  },
+
+  async getChatMessagesByDateRange(userId: string, startDate: string, endDate: string, limit = 100) {
+    const { data, error } = await supabase
+      .from('user_chat_history')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('created_at', startDate)
+      .lte('created_at', endDate)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getChatMessagesByType(userId: string, messageType: string, limit = 50) {
+    const { data, error } = await supabase
+      .from('user_chat_history')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('message_type', messageType)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getMarketAnalysisHistory(userId: string, marketId?: string, limit = 50) {
+    let query = supabase
+      .from('user_chat_history')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('query_type', 'market_analysis');
+    
+    if (marketId) {
+      query = query.eq('market_id', marketId);
+    }
+    
+    const { data, error } = await query
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getUserProfileAnalysisHistory(userId: string, limit = 50) {
+    const { data, error } = await supabase
+      .from('user_chat_history')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('query_type', 'user_profile')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (error) throw error;
+    return data || [];
   },
 };

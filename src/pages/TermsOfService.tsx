@@ -187,27 +187,6 @@ const TermsOfService = () => {
           <section className="space-y-6">
             <div className="flex items-center gap-3">
               <span className="h-2 w-2 bg-green-400 rounded-full" />
-              <h2 className="text-2xl font-semibold text-white">Contact Information</h2>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <div className="bg-gray-950 border border-green-500/20 p-4 rounded-xl">
-                <p className="text-sm text-green-200 font-semibold">General Inquiries</p>
-                <p className="text-xs text-muted-foreground">contact@zigma.ai</p>
-              </div>
-              <div className="bg-gray-950 border border-green-500/20 p-4 rounded-xl">
-                <p className="text-sm text-green-200 font-semibold">Legal & Compliance</p>
-                <p className="text-xs text-muted-foreground">legal@zigma.ai</p>
-              </div>
-              <div className="bg-gray-950 border border-green-500/20 p-4 rounded-xl">
-                <p className="text-sm text-green-200 font-semibold">Customer Support</p>
-                <p className="text-xs text-muted-foreground">support@zigma.ai</p>
-              </div>
-            </div>
-          </section>
-
-          <section className="space-y-6">
-            <div className="flex items-center gap-3">
-              <span className="h-2 w-2 bg-green-400 rounded-full" />
               <h2 className="text-2xl font-semibold text-white">Acknowledgment</h2>
             </div>
             <div className="bg-gray-950 border border-green-500/20 p-6 rounded-2xl">

@@ -9,6 +9,8 @@ import { Separator } from "@/components/ui/separator";
 import { MetricTooltip } from "@/components/MetricTooltip";
 import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
+import { useChatPersistence } from "@/hooks/useChatPersistence";
+import { useAuth } from "@/contexts/AuthContext";
 
 // ============================================================
 // TYPES
@@ -726,8 +728,16 @@ const Chat = () => {
   const [editingContent, setEditingContent] = useState("");
   const [favorites, setFavorites] = useState<string[]>([]);
   const [showSimulator, setShowSimulator] = useState(false);
+  const [requestStartTime, setRequestStartTime] = useState<number | null>(null);
   const feedRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Hooks
+  const { user, isAuthenticated } = useAuth();
+  const chatPersistence = useChatPersistence({
+    autoSave: true,
+    enableAnalytics: true
+  });
 
   // Computed values
   const isFavorite = matchedMarket ? favorites.includes(matchedMarket.id) : false;
@@ -871,6 +881,8 @@ const Chat = () => {
   // API Mutation
   const mutation = useMutation({
     mutationFn: async () => {
+      setRequestStartTime(Date.now());
+      
       const body = {
         query: input.trim() || undefined,
         marketId: marketId.trim() || undefined,
@@ -892,7 +904,35 @@ const Chat = () => {
 
       return (await res.json()) as ChatResponse;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      const processingTime = requestStartTime ? Date.now() - requestStartTime : undefined;
+      
+      // Save to database
+      if (isAuthenticated && user) {
+        try {
+          // Save user query
+          await chatPersistence.saveUserQuery(input.trim(), {
+            marketId: marketId.trim() || undefined,
+            polymarketUser: polymarketUser.trim() || undefined,
+            contextId: contextId || undefined,
+            processingTime
+          });
+
+          // Save Zigma response
+          const lastMessage = data.messages[data.messages.length - 1];
+          if (lastMessage && lastMessage.role === 'assistant') {
+            await chatPersistence.saveZigmaResponse(lastMessage, {
+              contextId: data.contextId,
+              processingTime,
+              matchedMarket: data.matchedMarket || undefined,
+              userQuery: input.trim()
+            });
+          }
+        } catch (error) {
+          console.error('Failed to save chat to database:', error);
+        }
+      }
+
       setContextId(data.contextId);
       setMatchedMarket(data.matchedMarket || null);
       setUserProfile(data.userProfile || null);
@@ -901,9 +941,26 @@ const Chat = () => {
       setError(null);
       handleSaveToHistory(input);
       setInput("");
+      setRequestStartTime(null);
     },
-    onError: (err: Error) => {
+    onError: async (err: Error) => {
+      const processingTime = requestStartTime ? Date.now() - requestStartTime : undefined;
+      
+      // Save error to database
+      if (isAuthenticated && user) {
+        try {
+          await chatPersistence.saveErrorMessage(err.message, {
+            contextId: contextId || undefined,
+            userQuery: input.trim(),
+            processingTime
+          });
+        } catch (error) {
+          console.error('Failed to save error to database:', error);
+        }
+      }
+      
       setError(err.message);
+      setRequestStartTime(null);
     },
   });
 
