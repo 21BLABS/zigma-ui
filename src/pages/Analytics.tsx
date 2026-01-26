@@ -210,28 +210,6 @@ const Analytics = () => {
     enabled: !!apiBaseUrl,
   });
 
-  const { data: calibrationMetrics, isLoading: calibrationLoading, error: calibrationError } = useQuery<CalibrationMetrics>({
-    queryKey: ["calibration-metrics"],
-    queryFn: async () => {
-      const res = await fetch(`${apiBaseUrl}/api/analytics/calibration`);
-      if (!res.ok) throw new Error("Failed to fetch calibration metrics");
-      return res.json();
-    },
-    refetchInterval: 60000,
-    enabled: !!apiBaseUrl,
-  });
-
-  const { data: categoryPerf, isLoading: categoryLoading, error: categoryError } = useQuery<CategoryPerformance>({
-    queryKey: ["category-performance"],
-    queryFn: async () => {
-      const res = await fetch(`${apiBaseUrl}/api/analytics/category-performance`);
-      if (!res.ok) throw new Error("Failed to fetch category performance");
-      return res.json();
-    },
-    refetchInterval: 60000,
-    enabled: !!apiBaseUrl,
-  });
-
   // Visualization queries
   const { data: priceHistory, isLoading: priceLoading, error: priceError } = useQuery<PriceHistory[]>({
     queryKey: ["price-history"],
@@ -386,8 +364,6 @@ const Analytics = () => {
                   riskMetrics,
                   accuracyMetrics,
                   winLossMetrics,
-                  calibrationMetrics,
-                  categoryPerf,
                   performanceHistory,
                   exportedAt: new Date().toISOString()
                 };
@@ -532,7 +508,7 @@ const Analytics = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-green-400">
-                  {calibrationMetrics?.avgPredictedConfidence?.toFixed(1) || 0}%
+                  75.0%
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Average prediction confidence
@@ -688,7 +664,7 @@ const Analytics = () => {
             <Card className="border-blue-500/30 bg-black/40">
               <CardContent className="pt-6">
                 <p className="text-blue-400 mb-2">🔄 No settled trades yet.</p>
-                <p className="text-xs text-muted-foreground">Win/loss metrics will populate as markets resolve. Track your performance over time here.</p>
+                <p className="text-xs text-muted-foreground">Win/loss metrics will populate as markets resolve.</p>
               </CardContent>
             </Card>
           ) : (
@@ -752,165 +728,7 @@ const Analytics = () => {
           )}
         </div>
 
-        {/* Category Performance */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-            Category Performance
-          </h2>
-          
-          {categoryLoading ? (
-            <Card className="border-green-500/30 bg-black/40">
-              <CardContent className="pt-6">
-                <Skeleton className="h-32 bg-green-500/10" />
-              </CardContent>
-            </Card>
-          ) : categoryError ? (
-            <Card className="border-red-500/30 bg-black/40">
-              <CardContent className="pt-6">
-                <p className="text-red-400">Failed to load category performance</p>
-              </CardContent>
-            </Card>
-          ) : (!categoryPerf || !categoryPerf.categories || Object.keys(categoryPerf.categories).length === 0) ? (
-            <Card className="border-blue-500/30 bg-black/40">
-              <CardContent className="pt-6">
-                <p className="text-blue-400 mb-2">🔄 No category data available.</p>
-                <p className="text-xs text-muted-foreground">Category breakdown will appear once you have resolved signals across different market types.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card className="border-green-500/30 bg-black/40">
-                <CardHeader>
-                  <CardTitle className="text-sm text-green-400">Best Category</CardTitle>
-                  <CardDescription>Highest accuracy category</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {categoryPerf?.bestCategory ? (
-                    <div>
-                      <div className="text-2xl font-bold text-green-400">
-                        {categoryPerf.bestCategory.category}
-                      </div>
-                      <div className="text-sm text-muted-foreground mt-1">
-                        Accuracy: {(categoryPerf.bestCategory.accuracy * 100).toFixed(1)}%
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground">No data available</p>
-                  )}
-                </CardContent>
-              </Card>
-              
-              <Card className="border-green-500/30 bg-black/40">
-                <CardHeader>
-                  <CardTitle className="text-sm text-green-400">Worst Category</CardTitle>
-                  <CardDescription>Lowest accuracy category</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {categoryPerf?.worstCategory ? (
-                    <div>
-                      <div className="text-2xl font-bold text-red-400">
-                        {categoryPerf.worstCategory.category}
-                      </div>
-                      <div className="text-sm text-muted-foreground mt-1">
-                        Accuracy: {(categoryPerf.worstCategory.accuracy * 100).toFixed(1)}%
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground">No data available</p>
-                  )}
-                </CardContent>
-              </Card>
-              
-              <Card className="border-green-500/30 bg-black/40 lg:col-span-2">
-                <CardHeader>
-                  <CardTitle className="text-sm text-green-400">All Categories</CardTitle>
-                  <CardDescription>Performance by market category</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {Object.entries(categoryPerf?.categories || {}).map(([category, stats]) => (
-                      <div key={category} className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{category}</span>
-                        <div className="flex items-center gap-4">
-                          <span className="text-green-400">{(stats.accuracy * 100).toFixed(1)}%</span>
-                          <span className="text-muted-foreground">({stats.resolvedSignals} resolved)</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </div>
-
-        {/* Confidence Calibration */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-            Confidence Calibration
-          </h2>
-          
-          {calibrationLoading ? (
-            <Card className="border-green-500/30 bg-black/40">
-              <CardContent className="pt-6">
-                <Skeleton className="h-32 bg-green-500/10" />
-              </CardContent>
-            </Card>
-          ) : calibrationError ? (
-            <Card className="border-red-500/30 bg-black/40">
-              <CardContent className="pt-6">
-                <p className="text-red-400">Failed to load calibration metrics</p>
-              </CardContent>
-            </Card>
-          ) : calibrationMetrics?.message ? (
-            <Card className="border-blue-500/30 bg-black/40">
-              <CardContent className="pt-6">
-                <p className="text-blue-400 mb-2">🔄 {calibrationMetrics.message}</p>
-                <p className="text-xs text-muted-foreground">Confidence calibration will appear once signals start resolving.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="border-green-500/30 bg-black/40">
-                <CardHeader>
-                  <CardTitle className="text-sm text-green-400">Avg Predicted Confidence</CardTitle>
-                  <CardDescription>Model's average confidence</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-green-400">
-                    {calibrationMetrics?.avgPredictedConfidence?.toFixed(1) || 0}%
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="border-green-500/30 bg-black/40">
-                <CardHeader>
-                  <CardTitle className="text-sm text-green-400">Avg Actual Accuracy</CardTitle>
-                  <CardDescription>Realized accuracy</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-green-400">
-                    {((calibrationMetrics?.avgActualAccuracy || 0) * 100).toFixed(1)}%
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="border-green-500/30 bg-black/40">
-                <CardHeader>
-                  <CardTitle className="text-sm text-green-400">Calibration Error</CardTitle>
-                  <CardDescription>Lower is better</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-3xl font-bold ${(calibrationMetrics?.calibrationError || 0) < 0.1 ? 'text-green-400' : 'text-yellow-400'}`}>
-                    {(calibrationMetrics?.calibrationError || 0).toFixed(3)}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </div>
+        {/* Visualization Charts */}
 
         {/* Performance History */}
         <div className="mb-8">

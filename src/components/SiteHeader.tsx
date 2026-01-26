@@ -16,6 +16,7 @@ import {
 const primaryNavItems = [
   { label: "Home", to: "/" },
   { label: "Chat", to: "/chat" },
+  { label: "Analytics", to: "/analytics" },
   { label: "Signals", to: "/signals" },
 ];
 
@@ -43,37 +44,8 @@ const SiteHeader = () => {
             </NavLink>
           ))}
           
-          {/* Docs Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger className="flex items-center gap-1 transition hover:text-green-300 text-green-400">
-              <BookOpen className="w-3 h-3" />
-              <span>Docs</span>
-              <ChevronDown className="w-3 h-3" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="bg-black border-green-500/30">
-              <DropdownMenuItem asChild>
-                <Link to="/docs" className="text-xs uppercase tracking-[0.15em]">Documentation</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/api-documentation" className="text-xs uppercase tracking-[0.15em]">API Documentation</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/sdk-guide" className="text-xs uppercase tracking-[0.15em]">SDK Guide</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/user-guide" className="text-xs uppercase tracking-[0.15em]">User Guide</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/manifesto" className="text-xs uppercase tracking-[0.15em]">Manifesto</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/faq" className="text-xs uppercase tracking-[0.15em]">FAQ</Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
           <span className="text-foreground/30">|</span>
-          <span className="text-[10px] tracking-[0.2em] text-yellow-400/60">BASKET (SOON)</span>
+          <span className="text-[10px] tracking-[0.2em] text-green-400 font-bold">$ZIGMA</span>
         </nav>
 
         <div className="flex items-center gap-3">

@@ -17,6 +17,7 @@ const Footer = () => {
   const pageLinks = [
     { label: "Analytics", to: "/analytics", disabled: false },
     { label: "Signals", to: "/signals", disabled: false },
+    { label: "BASKET (SOON)", to: "#", disabled: true },
   ];
 
 const docsLinks = [
