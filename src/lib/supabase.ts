@@ -22,7 +22,7 @@ export interface User {
   name: string;
   wallet_address?: string;
   avatar_url?: string;
-  auth_provider: 'email' | 'wallet' | 'web3auth';
+  auth_provider: 'email' | 'wallet';
   auth_provider_id?: string;
   email_verified: boolean;
   wallet_verified: boolean;

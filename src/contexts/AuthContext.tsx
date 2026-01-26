@@ -8,9 +8,9 @@ interface User {
   email: string;
   name: string;
   wallet_address?: string;
-  wallet_type?: 'phantom' | 'solflare' | 'backpack' | 'metamask';
+  wallet_type?: 'phantom' | 'solflare' | 'backpack';
   avatar?: string;
-  auth_provider: 'email' | 'wallet' | 'web3auth';
+  auth_provider: 'email' | 'wallet';
 }
 
 interface AuthContextType {
@@ -19,8 +19,9 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  loginWithWallet: (walletType?: 'phantom' | 'solflare' | 'backpack' | 'metamask') => Promise<void>;
+  loginWithWallet: (walletType?: 'phantom' | 'solflare' | 'backpack') => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -170,7 +171,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const loginWithWallet = async (walletType: 'phantom' | 'solflare' | 'backpack' | 'metamask' = 'phantom') => {
+  const loginWithWallet = async (walletType: 'phantom' | 'solflare' | 'backpack' = 'phantom') => {
     if (useFallback) {
       return fallbackAuth.loginWithWallet();
     }
@@ -203,15 +204,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           throw new Error('Backpack wallet not installed');
         }
       } else {
-        // MetaMask (Ethereum) - fallback
-        if (typeof window !== 'undefined' && (window as any).ethereum) {
-          const accounts = await (window as any).ethereum.request({ 
-            method: 'eth_requestAccounts' 
-          });
-          walletAddress = accounts[0];
-        } else {
-          throw new Error('MetaMask not installed');
-        }
+        throw new Error('Unsupported wallet type');
       }
       
       if (walletAddress) {
@@ -231,11 +224,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const handleWalletAuth = async (walletAddress: string, walletType: 'phantom' | 'solflare' | 'backpack' | 'metamask' = 'phantom') => {
+  const handleWalletAuth = async (walletAddress: string, walletType: 'phantom' | 'solflare' | 'backpack' = 'phantom') => {
     try {
       // Create a wallet-based authentication with proper domain
-      const domain = walletType === 'metamask' ? 'eth' : 'sol';
-      const walletEmail = `${walletAddress.toLowerCase()}@wallet.${domain}`;
+      const walletEmail = `${walletAddress.toLowerCase()}@wallet.sol`;
       const walletPassword = `wallet_${walletAddress.toLowerCase()}`;
       
       // Try to sign in first
@@ -306,6 +298,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const resetPassword = async (email: string) => {
+    if (useFallback) {
+      // Fallback doesn't support password reset, show message
+      throw new Error('Password reset is not available in demo mode. Please contact support.');
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        console.error('Password reset error:', error);
+        throw new Error('Failed to send password reset email');
+      }
+    } catch (error) {
+      console.error('Password reset error:', error);
+      throw error;
+    }
+  };
+
   const logout = async () => {
     if (useFallback) {
       fallbackAuth.logout();
@@ -314,8 +327,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     await supabase.auth.signOut();
   };
-
-  // Use fallback user if Supabase is not available
   const currentUser = useFallback ? fallbackAuth.user : user;
   const currentIsLoading = useFallback ? fallbackAuth.isLoading : isLoading;
   const currentIsAuthenticated = useFallback ? fallbackAuth.isAuthenticated : !!user;
@@ -328,6 +339,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     loginWithWallet,
     signup,
+    resetPassword,
     logout,
   };
 

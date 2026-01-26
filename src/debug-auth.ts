@@ -11,10 +11,11 @@ export const debugAuth = () => {
   const fallbackUser = localStorage.getItem('zigma_fallback_user');
   console.log('Fallback user in localStorage:', fallbackUser ? 'Yes' : 'No');
   
-  // Check MetaMask
+  // Check Solana wallets
   if (typeof window !== 'undefined') {
-    console.log('MetaMask available:', !!(window as any).ethereum);
-    console.log('MetaMask unlocked:', (window as any).ethereum?._state?.isUnlocked);
+    console.log('Phantom available:', !!(window as any).phantom?.solana);
+    console.log('Solflare available:', !!(window as any).solflare);
+    console.log('Backpack available:', !!(window as any).backpack);
   }
 };
 

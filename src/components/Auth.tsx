@@ -10,7 +10,7 @@ import { Loader2, Wallet, Mail, User, ExternalLink } from 'lucide-react';
 import '@/debug-auth';
 
 const Auth = () => {
-  const { login, signup, loginWithWallet, isLoading } = useAuth();
+  const { login, signup, loginWithWallet, resetPassword, isLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -30,6 +30,24 @@ const Auth = () => {
     }
   };
 
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    
+    if (!email) {
+      setError('Please enter your email address');
+      return;
+    }
+    
+    try {
+      await resetPassword(email);
+      setSuccess('Password reset email sent! Please check your inbox.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to send password reset email.');
+    }
+  };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -43,7 +61,7 @@ const Auth = () => {
     }
   };
 
-  const handleWalletLogin = async (walletType: 'phantom' | 'solflare' | 'backpack' | 'metamask') => {
+  const handleWalletLogin = async (walletType: 'phantom' | 'solflare' | 'backpack') => {
     setError('');
     setSuccess('');
     
@@ -135,6 +153,22 @@ const Auth = () => {
                           'Login'
                         )}
                       </Button>
+                      
+                      <Button 
+                        type="button" 
+                        variant="outline"
+                        className="w-full border-green-500/30 text-green-400 hover:bg-green-500/10"
+                        onClick={() => {
+                          const resetEmail = prompt('Enter your email address for password reset:');
+                          if (resetEmail) {
+                            setEmail(resetEmail);
+                            handlePasswordReset(new Event('submit') as any);
+                          }
+                        }}
+                        disabled={isLoading}
+                      >
+                        Forgot Password?
+                      </Button>
                     </form>
                   </TabsContent>
 
@@ -197,10 +231,10 @@ const Auth = () => {
 
               <TabsContent value="wallet" className="space-y-4">
                 <div className="space-y-4">
-                  {/* Solana Wallets - Priority */}
+                  {/* Solana Wallets */}
                   <div className="space-y-3">
                     <div className="text-center">
-                      <p className="text-sm font-medium text-green-300 mb-3">Solana Wallets</p>
+                      <p className="text-sm font-medium text-green-300 mb-3">Connect Your Wallet</p>
                     </div>
                     
                     {/* Phantom */}
@@ -267,43 +301,6 @@ const Auth = () => {
                     </Button>
                   </div>
 
-                  {/* Divider */}
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-green-500/20"></div>
-                    </div>
-                    <div className="relative flex justify-center text-xs">
-                      <span className="bg-black px-2 text-green-200/60">Or</span>
-                    </div>
-                  </div>
-
-                  {/* Ethereum Wallets - Fallback */}
-                  <div className="space-y-3">
-                    <div className="text-center">
-                      <p className="text-sm font-medium text-green-300 mb-3">Ethereum Wallets</p>
-                    </div>
-                    
-                    {/* MetaMask */}
-                    <Button 
-                      onClick={() => handleWalletLogin('metamask')}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white border border-green-500/30"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Connecting...
-                        </>
-                      ) : (
-                        <>
-                          <div className="w-5 h-5 mr-2 bg-orange-500 rounded flex items-center justify-center">
-                            <div className="w-3 h-3 bg-white rounded-sm"></div>
-                          </div>
-                          Connect MetaMask
-                        </>
-                      )}
-                    </Button>
-                  </div>
 
                   {/* Wallet Installation Links */}
                   <div className="text-center space-y-2">
@@ -335,15 +332,6 @@ const Auth = () => {
                       >
                         <ExternalLink className="w-3 h-3" />
                         Backpack
-                      </a>
-                      <a 
-                        href="https://metamask.io/" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-xs text-green-400 hover:text-green-300 flex items-center gap-1"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        MetaMask
                       </a>
                     </div>
                   </div>

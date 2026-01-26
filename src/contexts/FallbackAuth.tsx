@@ -5,9 +5,9 @@ interface User {
   email: string;
   name: string;
   wallet_address?: string;
-  wallet_type?: 'phantom' | 'solflare' | 'backpack' | 'metamask';
+  wallet_type?: 'phantom' | 'solflare' | 'backpack';
   avatar?: string;
-  auth_provider: 'email' | 'wallet' | 'web3auth';
+  auth_provider: 'email' | 'wallet';
 }
 
 interface FallbackAuthContextType {
@@ -15,8 +15,9 @@ interface FallbackAuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  loginWithWallet: (walletType?: 'phantom' | 'solflare' | 'backpack' | 'metamask') => Promise<void>;
+  loginWithWallet: (walletType?: 'phantom' | 'solflare' | 'backpack') => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -69,7 +70,7 @@ export const FallbackAuthProvider: React.FC<FallbackAuthProviderProps> = ({ chil
     }
   };
 
-  const loginWithWallet = async (walletType: 'phantom' | 'solflare' | 'backpack' | 'metamask' = 'phantom') => {
+  const loginWithWallet = async (walletType: 'phantom' | 'solflare' | 'backpack' = 'phantom') => {
     setIsLoading(true);
     try {
       let walletAddress: string;
@@ -96,21 +97,12 @@ export const FallbackAuthProvider: React.FC<FallbackAuthProviderProps> = ({ chil
           throw new Error('Backpack wallet not installed');
         }
       } else {
-        // MetaMask (Ethereum) - fallback
-        if (typeof window !== 'undefined' && (window as any).ethereum) {
-          const accounts = await (window as any).ethereum.request({ 
-            method: 'eth_requestAccounts' 
-          });
-          walletAddress = accounts[0];
-        } else {
-          throw new Error('MetaMask not installed');
-        }
+        throw new Error('Unsupported wallet type');
       }
       
-      const domain = walletType === 'metamask' ? 'eth' : 'sol';
       const mockUser: User = {
         id: 'fallback_wallet_' + Date.now(),
-        email: `${walletAddress.toLowerCase()}@wallet.${domain}`,
+        email: `${walletAddress.toLowerCase()}@wallet.sol`,
         name: `${walletType.charAt(0).toUpperCase() + walletType.slice(1)} User`,
         wallet_address: walletAddress,
         wallet_type: walletType,
@@ -155,6 +147,10 @@ export const FallbackAuthProvider: React.FC<FallbackAuthProviderProps> = ({ chil
     }
   };
 
+  const resetPassword = async (email: string) => {
+    throw new Error('Password reset is not available in demo mode. Please contact support.');
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('zigma_fallback_user');
@@ -167,6 +163,7 @@ export const FallbackAuthProvider: React.FC<FallbackAuthProviderProps> = ({ chil
     login,
     loginWithWallet,
     signup,
+    resetPassword,
     logout,
   };
 
