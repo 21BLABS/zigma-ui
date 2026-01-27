@@ -45,7 +45,7 @@ const SiteHeader = () => {
           ))}
           
           <span className="text-foreground/30">|</span>
-          <span className="text-[10px] tracking-[0.2em] text-green-400 font-bold">$ZIGMA</span>
+          <Link to="/zigma" className="text-[10px] tracking-[0.2em] text-green-400 font-bold hover:text-green-300 transition-colors">$ZIGMA</Link>
         </nav>
 
         <div className="flex items-center gap-3">

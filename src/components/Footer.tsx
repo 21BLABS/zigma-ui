@@ -17,10 +17,11 @@ const Footer = () => {
   const pageLinks = [
     { label: "Analytics", to: "/analytics", disabled: false },
     { label: "Signals", to: "/signals", disabled: false },
-    { label: "BASKET (SOON)", to: "#", disabled: true },
+    { label: "Basket", to: "/basket", disabled: true },
+    { label: "ZIGMA Token", to: "/zigma", disabled: false },
   ];
 
-const docsLinks = [
+  const docsLinks = [
     { label: "Documentation", to: "/docs" },
     { label: "API Documentation", to: "/api-documentation" },
     { label: "SDK Guide", to: "/sdk-guide" },

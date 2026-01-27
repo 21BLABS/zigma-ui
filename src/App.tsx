@@ -25,6 +25,8 @@ import SDKGuide from "./pages/SDKGuide";
 import ApiDocumentation from "./pages/ApiDocumentation";
 import FAQ from "./pages/FAQ";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import Basket from "./pages/Basket";
+import Zigma from "./pages/Zigma";
 import NotFound from "./pages/NotFound";
 import { useKeyboardShortcuts } from "./utils/keyboard-shortcuts";
 
@@ -37,7 +39,8 @@ const AppContent = () => {
     'Alt+h': () => navigate('/'),
     'Alt+a': () => navigate('/analytics'),
     'Alt+s': () => navigate('/signals'),
-    'Alt+b': () => navigate('/backtesting'),
+    'Alt+b': () => navigate('/basket'),
+    'Alt+z': () => navigate('/zigma'),
     'Alt+w': () => navigate('/settings'),
     'Alt+l': () => navigate('/logs'),
     'Alt+d': () => navigate('/docs'),
@@ -62,6 +65,8 @@ const AppContent = () => {
       <Route path="/user-guide" element={<UserGuide />} />
       <Route path="/sdk-guide" element={<SDKGuide />} />
       <Route path="/api-documentation" element={<ApiDocumentation />} />
+      <Route path="/basket" element={<Basket />} />
+      <Route path="/zigma" element={<Zigma />} />
       
       {/* Protected Routes */}
       <Route path="/analytics" element={
