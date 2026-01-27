@@ -15,7 +15,7 @@ interface FallbackAuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  loginWithWallet: (walletType?: 'phantom' | 'solflare' | 'backpack') => Promise<void>;
+  loginWithWallet: (walletType?: 'backpack') => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   logout: () => void;
@@ -51,7 +51,26 @@ export const FallbackAuthProvider: React.FC<FallbackAuthProviderProps> = ({ chil
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // Simple mock authentication
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error('Please enter a valid email address.');
+      }
+
+      // For demo purposes, only allow specific demo accounts
+      const demoAccounts = [
+        { email: 'demo@zigma.ai', password: 'demo123' },
+        { email: 'test@zigma.ai', password: 'test123' }
+      ];
+
+      const isValidDemo = demoAccounts.some(account => 
+        account.email === email && account.password === password
+      );
+
+      if (!isValidDemo) {
+        throw new Error('Invalid credentials. For demo, use demo@zigma.ai / demo123 or test@zigma.ai / test123');
+      }
+
       const mockUser: User = {
         id: 'fallback_' + Date.now(),
         email,
@@ -62,7 +81,7 @@ export const FallbackAuthProvider: React.FC<FallbackAuthProviderProps> = ({ chil
       
       setUser(mockUser);
       localStorage.setItem('zigma_fallback_user', JSON.stringify(mockUser));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Fallback login failed:', error);
       throw error;
     } finally {
@@ -70,111 +89,26 @@ export const FallbackAuthProvider: React.FC<FallbackAuthProviderProps> = ({ chil
     }
   };
 
-  const loginWithWallet = async (walletType: 'phantom' | 'solflare' | 'backpack' = 'phantom') => {
+  const loginWithWallet = async (walletType: 'backpack' = 'backpack') => {
     setIsLoading(true);
     try {
       let walletAddress: string;
-      
-      if (walletType === 'phantom') {
-        // Phantom Wallet (Solana) - Desktop and Mobile
-        if (typeof window !== 'undefined') {
-          console.log('Attempting Phantom connection...');
-          
-          // Try desktop Phantom first
-          if ((window as any).phantom?.solana) {
-            try {
-              console.log('Found Phantom desktop, connecting...');
-              const response = await (window as any).phantom.solana.connect();
-              walletAddress = response.publicKey.toString();
-              console.log('Phantom desktop connected successfully:', walletAddress);
-            } catch (err: any) {
-              console.error('Phantom desktop connection failed:', err);
-              // Try mobile Phantom deep link
-              if ((window as any).solana?.isPhantom) {
-                try {
-                  console.log('Trying Phantom mobile...');
-                  const response = await (window as any).solana.connect();
-                  walletAddress = response.publicKey.toString();
-                  console.log('Phantom mobile connected successfully:', walletAddress);
-                } catch (mobileErr: any) {
-                  console.error('Phantom mobile also failed:', mobileErr);
-                  // For fallback, create a mock wallet address
-                  walletAddress = 'mock_phantom_' + Date.now();
-                  console.log('Using mock Phantom address for fallback:', walletAddress);
-                }
-              } else {
-                // For fallback, create a mock wallet address
-                walletAddress = 'mock_phantom_' + Date.now();
-                console.log('Phantom not available, using mock address for fallback:', walletAddress);
-              }
-            }
-          } else if ((window as any).solana?.isPhantom) {
-            // Mobile Phantom
-            try {
-              console.log('Found Phantom mobile, connecting...');
-              const response = await (window as any).solana.connect();
-              walletAddress = response.publicKey.toString();
-              console.log('Phantom mobile connected successfully:', walletAddress);
-            } catch (err: any) {
-              console.error('Phantom mobile connection failed:', err);
-              // For fallback, create a mock wallet address
-              walletAddress = 'mock_phantom_' + Date.now();
-              console.log('Phantom mobile failed, using mock address for fallback:', walletAddress);
-            }
-          } else {
-            console.log('Phantom not detected. Available wallets:', {
-              phantom: !!(window as any).phantom,
-              phantomSolana: !!(window as any).phantom?.solana,
-              solana: !!(window as any).solana,
-              isPhantom: !!(window as any).solana?.isPhantom
-            });
-            // For fallback, create a mock wallet address
-            walletAddress = 'mock_phantom_' + Date.now();
-            console.log('Phantom not available, using mock address for fallback:', walletAddress);
-          }
-        } else {
-          // For fallback, create a mock wallet address
-          walletAddress = 'mock_phantom_' + Date.now();
-          console.log('Window not available, using mock address for fallback:', walletAddress);
-        }
-      } else if (walletType === 'solflare') {
-        // Solflare Wallet (Solana)
-        if (typeof window !== 'undefined' && (window as any).solflare) {
-          try {
-            const response = await (window as any).solflare.connect();
-            walletAddress = response.publicKey.toString();
-          } catch (err: any) {
-            console.error('Solflare connection failed:', err);
-            // For fallback, create a mock wallet address
-            walletAddress = 'mock_solflare_' + Date.now();
-            console.log('Solflare failed, using mock address for fallback:', walletAddress);
-          }
-        } else {
-          // For fallback, create a mock wallet address
-          walletAddress = 'mock_solflare_' + Date.now();
-          console.log('Solflare not available, using mock address for fallback:', walletAddress);
-        }
-      } else if (walletType === 'backpack') {
-        // Backpack Wallet (Solana)
-        if (typeof window !== 'undefined' && (window as any).backpack) {
-          try {
-            const response = await (window as any).backpack.connect();
-            walletAddress = response.publicKey.toString();
-          } catch (err: any) {
-            console.error('Backpack connection failed:', err);
-            // For fallback, create a mock wallet address
-            walletAddress = 'mock_backpack_' + Date.now();
-            console.log('Backpack failed, using mock address for fallback:', walletAddress);
-          }
-        } else {
-          // For fallback, create a mock wallet address
-          walletAddress = 'mock_backpack_' + Date.now();
-          console.log('Backpack not available, using mock address for fallback:', walletAddress);
-        }
-      } else {
-        throw new Error('Unsupported wallet type');
+      const wallet = (window as any).backpack;
+
+      if (!wallet) {
+        throw new Error(`${walletType} wallet not installed`);
       }
+
+      // Normal connection for Backpack
+      try {
+        await wallet.disconnect?.();
+      } catch (e) {}
       
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const response = await wallet.connect();
+      walletAddress = response.publicKey.toString();
+
       const mockUser: User = {
         id: 'fallback_wallet_' + Date.now(),
         email: `${walletAddress.toLowerCase()}@wallet.sol`,
@@ -183,28 +117,12 @@ export const FallbackAuthProvider: React.FC<FallbackAuthProviderProps> = ({ chil
         wallet_type: walletType,
         auth_provider: 'wallet',
       };
-      
+
       setUser(mockUser);
       localStorage.setItem('zigma_fallback_user', JSON.stringify(mockUser));
     } catch (error: any) {
-      console.error('Fallback wallet login failed:', error);
-      
-      // In fallback mode, we should always succeed with a mock wallet
-      // This ensures the demo experience works even without real wallets
-      const mockWalletAddress = `mock_${walletType}_${Date.now()}`;
-      console.log('Creating fallback mock wallet:', mockWalletAddress);
-      
-      const mockUser: User = {
-        id: 'fallback_wallet_' + Date.now(),
-        email: `${mockWalletAddress.toLowerCase()}@wallet.sol`,
-        name: `${walletType.charAt(0).toUpperCase() + walletType.slice(1)} User (Demo)`,
-        wallet_address: mockWalletAddress,
-        wallet_type: walletType,
-        auth_provider: 'wallet',
-      };
-      
-      setUser(mockUser);
-      localStorage.setItem('zigma_fallback_user', JSON.stringify(mockUser));
+      console.error('Wallet login failed:', error);
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -213,6 +131,26 @@ export const FallbackAuthProvider: React.FC<FallbackAuthProviderProps> = ({ chil
   const signup = async (email: string, password: string, name: string) => {
     setIsLoading(true);
     try {
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error('Please enter a valid email address.');
+      }
+
+      // For demo purposes, only allow specific demo domains
+      if (!email.endsWith('@zigma.ai')) {
+        throw new Error('Signup is limited to @zigma.ai email addresses in demo mode.');
+      }
+
+      // Check if account already exists
+      const savedUser = localStorage.getItem('zigma_fallback_user');
+      if (savedUser) {
+        const existingUser = JSON.parse(savedUser);
+        if (existingUser.email === email) {
+          throw new Error('This email is already registered. Please try logging in.');
+        }
+      }
+
       const mockUser: User = {
         id: 'fallback_' + Date.now(),
         email,
@@ -223,7 +161,7 @@ export const FallbackAuthProvider: React.FC<FallbackAuthProviderProps> = ({ chil
       
       setUser(mockUser);
       localStorage.setItem('zigma_fallback_user', JSON.stringify(mockUser));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Fallback signup failed:', error);
       throw error;
     } finally {

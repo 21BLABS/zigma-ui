@@ -19,7 +19,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  loginWithWallet: (walletType?: 'phantom' | 'solflare' | 'backpack') => Promise<void>;
+  loginWithWallet: (walletType?: 'backpack') => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -148,116 +148,62 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const login = async (email: string, password: string) => {
-    if (useFallback) {
-      return fallbackAuth.login(email, password);
-    }
-
+    // Always use Supabase for email authentication - no fallback
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
         console.error('Supabase login error:', error);
-        // Fall back to localStorage auth on Supabase error
-        setUseFallback(true);
-        return fallbackAuth.login(email, password);
+        
+        // Handle specific error messages
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Invalid email or password. Please check your credentials and try again.');
+        } else if (error.message.includes('Email not confirmed')) {
+          throw new Error('Please confirm your email address before logging in. Check your inbox for the confirmation link.');
+        } else if (error.message.includes('Too many requests')) {
+          throw new Error('Too many login attempts. Please wait a moment and try again.');
+        } else {
+          throw new Error(`Login failed: ${error.message}`);
+        }
       }
-    } catch (error) {
+
+      // User is logged in successfully - fetch user profile
+      if (data.user) {
+        await fetchUserProfile(data.user.id);
+      }
+    } catch (error: any) {
       console.error('Login error:', error);
-      setUseFallback(true);
-      return fallbackAuth.login(email, password);
+      throw error; // Re-throw the error to be handled by the UI
     }
   };
 
-  const loginWithWallet = async (walletType: 'phantom' | 'solflare' | 'backpack' = 'phantom') => {
+  const loginWithWallet = async (walletType: 'backpack' = 'backpack') => {
     if (useFallback) {
       return fallbackAuth.loginWithWallet(walletType);
     }
 
     try {
       let walletAddress: string;
-      
-      if (walletType === 'phantom') {
-        // Phantom Wallet (Solana) - Desktop and Mobile
-        if (typeof window !== 'undefined') {
-          console.log('Attempting Phantom connection...');
-          
-          // Try desktop Phantom first
-          if ((window as any).phantom?.solana) {
-            try {
-              console.log('Found Phantom desktop, connecting...');
-              const response = await (window as any).phantom.solana.connect();
-              walletAddress = response.publicKey.toString();
-              console.log('Phantom desktop connected successfully:', walletAddress);
-            } catch (err: any) {
-              console.error('Phantom desktop connection failed:', err);
-              // Try mobile Phantom deep link
-              if ((window as any).solana?.isPhantom) {
-                try {
-                  console.log('Trying Phantom mobile...');
-                  const response = await (window as any).solana.connect();
-                  walletAddress = response.publicKey.toString();
-                  console.log('Phantom mobile connected successfully:', walletAddress);
-                } catch (mobileErr: any) {
-                  console.error('Phantom mobile also failed:', mobileErr);
-                  throw new Error('Phantom wallet connection failed. Please ensure Phantom is installed and unlocked.');
-                }
-              } else {
-                throw new Error('Phantom wallet connection failed. Please ensure Phantom is installed and unlocked.');
-              }
-            }
-          } else if ((window as any).solana?.isPhantom) {
-            // Mobile Phantom
-            try {
-              console.log('Found Phantom mobile, connecting...');
-              const response = await (window as any).solana.connect();
-              walletAddress = response.publicKey.toString();
-              console.log('Phantom mobile connected successfully:', walletAddress);
-            } catch (err: any) {
-              console.error('Phantom mobile connection failed:', err);
-              throw new Error('Phantom wallet connection failed. Please ensure Phantom is installed and unlocked.');
-            }
-          } else {
-            console.log('Phantom not detected. Available wallets:', {
-              phantom: !!(window as any).phantom,
-              phantomSolana: !!(window as any).phantom?.solana,
-              solana: !!(window as any).solana,
-              isPhantom: !!(window as any).solana?.isPhantom
-            });
-            throw new Error('Phantom wallet not installed. Please install Phantom from phantom.app');
-          }
-        } else {
-          throw new Error('Window not available');
-        }
-      } else if (walletType === 'solflare') {
-        // Solflare Wallet (Solana)
-        if (typeof window !== 'undefined' && (window as any).solflare) {
-          try {
-            const response = await (window as any).solflare.connect();
-            walletAddress = response.publicKey.toString();
-          } catch (err: any) {
-            throw new Error('Solflare wallet connection failed. Please ensure Solflare is installed and unlocked.');
-          }
-        } else {
-          throw new Error('Solflare wallet not installed. Please install Solflare from solflare.com');
-        }
-      } else if (walletType === 'backpack') {
-        // Backpack Wallet (Solana)
-        if (typeof window !== 'undefined' && (window as any).backpack) {
-          try {
-            const response = await (window as any).backpack.connect();
-            walletAddress = response.publicKey.toString();
-          } catch (err: any) {
-            throw new Error('Backpack wallet connection failed. Please ensure Backpack is installed and unlocked.');
-          }
-        } else {
-          throw new Error('Backpack wallet not installed. Please install Backpack from backpack.app');
-        }
-      } else {
-        throw new Error('Unsupported wallet type');
+      const wallet = (window as any).backpack;
+
+      if (!wallet) {
+        throw new Error(`${walletType} wallet not installed`);
       }
+
+      // Disconnect first to clear stale state
+      try {
+        await wallet.disconnect?.();
+      } catch (e) {}
+      
+      // Wait a moment
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Connect
+      const response = await wallet.connect();
+      walletAddress = response.publicKey.toString();
       
       if (walletAddress) {
         await handleWalletAuth(walletAddress, walletType);
@@ -278,7 +224,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const handleWalletAuth = async (walletAddress: string, walletType: 'phantom' | 'solflare' | 'backpack' = 'phantom') => {
+  const handleWalletAuth = async (walletAddress: string, walletType: 'backpack' = 'backpack') => {
     try {
       // Create a wallet-based authentication with proper domain
       const walletEmail = `${walletAddress.toLowerCase()}@wallet.sol`;
@@ -323,12 +269,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const signup = async (email: string, password: string, name: string) => {
-    if (useFallback) {
-      return fallbackAuth.signup(email, password, name);
-    }
-
+    // Always use Supabase for email signup - no fallback
     try {
-      const { error } = await supabase.auth.signUp({
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error('Please enter a valid email address.');
+      }
+
+      // Validate password strength
+      if (password.length < 6) {
+        throw new Error('Password must be at least 6 characters long.');
+      }
+
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -341,33 +295,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (error) {
         console.error('Supabase signup error:', error);
-        // Fall back to localStorage auth on Supabase error
-        setUseFallback(true);
-        return fallbackAuth.signup(email, password, name);
+        
+        // Handle specific error messages
+        if (error.message.includes('User already registered')) {
+          throw new Error('This email is already registered. Please try logging in instead.');
+        } else if (error.message.includes('Password should be at least')) {
+          throw new Error('Password must be at least 6 characters long.');
+        } else {
+          throw new Error(`Signup failed: ${error.message}`);
+        }
       }
-    } catch (error) {
+
+      // Check if user needs email confirmation
+      if (data.user && !data.user.email_confirmed_at) {
+        throw new Error('Account created! Please check your email to confirm your account before logging in.');
+      }
+
+      // User is signed up and confirmed - fetch user profile
+      if (data.user) {
+        await fetchUserProfile(data.user.id);
+      }
+    } catch (error: any) {
       console.error('Signup error:', error);
-      setUseFallback(true);
-      return fallbackAuth.signup(email, password, name);
+      throw error; // Re-throw the error to be handled by the UI
     }
   };
 
   const resetPassword = async (email: string) => {
-    if (useFallback) {
-      // Fallback doesn't support password reset, show message
-      throw new Error('Password reset is not available in demo mode. Please contact support.');
-    }
-
+    // Always use Supabase for password reset
     try {
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error('Please enter a valid email address.');
+      }
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
 
       if (error) {
-        console.error('Password reset error:', error);
-        throw new Error('Failed to send password reset email');
+        console.error('Supabase password reset error:', error);
+        throw new Error(`Password reset failed: ${error.message}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Password reset error:', error);
       throw error;
     }

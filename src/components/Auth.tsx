@@ -74,7 +74,7 @@ const Auth = () => {
     }
   };
 
-  const handleWalletLogin = async (walletType: 'phantom' | 'solflare' | 'backpack') => {
+  const handleWalletLogin = async (walletType: 'backpack') => {
     setError('');
     setSuccess('');
     
@@ -251,48 +251,6 @@ const Auth = () => {
                       <p className="text-sm font-medium text-green-300 mb-3">Connect Your Wallet</p>
                     </div>
                     
-                    {/* Phantom */}
-                    <Button 
-                      onClick={() => handleWalletLogin('phantom')}
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white border border-purple-500/30"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Connecting...
-                        </>
-                      ) : (
-                        <>
-                          <div className="w-5 h-5 mr-2 bg-purple-500 rounded-full flex items-center justify-center">
-                            <div className="w-3 h-3 bg-white rounded-full"></div>
-                          </div>
-                          Connect Phantom
-                        </>
-                      )}
-                    </Button>
-
-                    {/* Solflare */}
-                    <Button 
-                      onClick={() => handleWalletLogin('solflare')}
-                      className="w-full bg-orange-600 hover:bg-orange-700 text-white border border-orange-500/30"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Connecting...
-                        </>
-                      ) : (
-                        <>
-                          <div className="w-5 h-5 mr-2 bg-orange-500 rounded flex items-center justify-center">
-                            <div className="w-3 h-3 bg-white rounded-sm"></div>
-                          </div>
-                          Connect Solflare
-                        </>
-                      )}
-                    </Button>
-
                     {/* Backpack */}
                     <Button 
                       onClick={() => handleWalletLogin('backpack')}
@@ -309,35 +267,16 @@ const Auth = () => {
                           <div className="w-5 h-5 mr-2 bg-blue-500 rounded flex items-center justify-center">
                             <div className="w-3 h-3 bg-white rounded-sm"></div>
                           </div>
-                          Connect Backpack
+                          Backpack
                         </>
                       )}
                     </Button>
                   </div>
 
-
                   {/* Wallet Installation Links */}
                   <div className="text-center space-y-2">
                     <p className="text-xs text-green-200/60">Don't have a wallet?</p>
                     <div className="flex flex-wrap justify-center gap-2">
-                      <a 
-                        href="https://phantom.app/" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        Phantom
-                      </a>
-                      <a 
-                        href="https://solflare.com/" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-xs text-orange-400 hover:text-orange-300 flex items-center gap-1"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        Solflare
-                      </a>
                       <a 
                         href="https://backpack.app/" 
                         target="_blank" 

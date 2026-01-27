@@ -753,7 +753,9 @@ const Chat = () => {
       
       setIsLoadingUsage(true);
       try {
-        const usage = await db.canUseChat(user.id, user.wallet_address);
+        // Use email as fallback for wallet_address if it's null (for email users)
+        const userIdentifier = user.wallet_address || user.email;
+        const usage = await db.canUseChat(user.id, userIdentifier);
         setChatUsage(usage);
       } catch (error) {
         console.error('Failed to check chat usage:', error);
@@ -931,12 +933,14 @@ const Chat = () => {
     onSuccess: async (data) => {
       const processingTime = requestStartTime ? Date.now() - requestStartTime : undefined;
       
-      // Increment usage for wallet users
-      if (isAuthenticated && user && user.auth_provider === 'wallet') {
+      // Increment usage for all authenticated users
+      if (isAuthenticated && user) {
         try {
-          await db.incrementChatUsage(user.id, user.wallet_address);
+          // Use email as fallback for wallet_address if it's null (for email users)
+          const userIdentifier = user.wallet_address || user.email;
+          await db.incrementChatUsage(user.id, userIdentifier);
           // Refresh usage data
-          const updatedUsage = await db.canUseChat(user.id, user.wallet_address);
+          const updatedUsage = await db.canUseChat(user.id, userIdentifier);
           setChatUsage(updatedUsage);
         } catch (error) {
           console.error('Failed to increment chat usage:', error);
@@ -1014,8 +1018,8 @@ const Chat = () => {
     e.preventDefault();
     if (!canSubmit) return;
 
-    // Check usage limits for wallet users
-    if (isAuthenticated && user && user.auth_provider === 'wallet') {
+    // Check usage limits for all authenticated users
+    if (isAuthenticated && user) {
       if (!chatUsage.canUse) {
         setError(`Chat usage limit reached. You have used all 5 chats in the last 24 hours. Next reset: ${new Date(chatUsage.resetAt!).toLocaleString()}`);
         return;
