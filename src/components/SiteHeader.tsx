@@ -20,6 +20,15 @@ const primaryNavItems = [
   { label: "Signals", to: "/signals" },
 ];
 
+const docsLinks = [
+  { label: "Documentation", to: "/docs" },
+  { label: "API Documentation", to: "/api-documentation" },
+  { label: "SDK Guide", to: "/sdk-guide" },
+  { label: "User Guide", to: "/user-guide" },
+  { label: "Manifesto", to: "/manifesto" },
+  { label: "FAQ", to: "/faq" },
+];
+
 const SiteHeader = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isAuthenticated, user } = useAuth();
@@ -46,6 +55,26 @@ const SiteHeader = () => {
           
           <span className="text-foreground/30">|</span>
           <Link to="/zigma" className="text-[10px] tracking-[0.2em] text-green-400 font-bold hover:text-green-300 transition-colors">$ZIGMA</Link>
+          
+          <span className="text-foreground/30">|</span>
+          
+          {/* Docs Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger className="flex items-center gap-1 text-green-400 hover:text-green-300 transition-colors">
+              <BookOpen className="w-3 h-3" />
+              <span>Docs</span>
+              <ChevronDown className="w-3 h-3" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="bg-black border-green-500/30">
+              {docsLinks.map((link) => (
+                <DropdownMenuItem key={link.to} asChild>
+                  <Link to={link.to} className="text-xs uppercase tracking-[0.15em] text-muted-foreground hover:text-green-300">
+                    {link.label}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </nav>
 
         <div className="flex items-center gap-3">

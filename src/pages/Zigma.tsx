@@ -4,9 +4,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertCircle, TrendingUp, DollarSign, Zap, Shield, Users, Clock, ArrowUpRight, Wallet, ExternalLink } from 'lucide-react';
+import { AlertCircle, TrendingUp, DollarSign, Zap, Shield, Users, Clock, ArrowUpRight, Wallet, ExternalLink, Coins } from 'lucide-react';
 import SiteHeader from '@/components/SiteHeader';
 import Footer from '@/components/Footer';
+import { PaymentModal } from '@/components/PaymentModal';
+import { CreditsDisplay } from '@/components/CreditsDisplay';
 
 interface TokenStats {
   price: number;
@@ -30,19 +32,138 @@ interface Plan {
 
 const Zigma = () => {
   const [tokenStats, setTokenStats] = useState<TokenStats>({
-    price: 0.01,
-    marketCap: 5000000,
+    price: 0.000028,
+    marketCap: 28000,
     totalSupply: 1000000000,
-    circulatingSupply: 800000000,
-    holders: 0,
-    volume24h: 0,
+    circulatingSupply: 900000000,
+    holders: 154,
+    volume24h: 96000,
     priceChange24h: 0
   });
+
+  // Credit system state
+  const [credits, setCredits] = useState(0);
+  const [totalCreditsEarned, setTotalCreditsEarned] = useState(0);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentConfig, setPaymentConfig] = useState(null);
+
+  // Fetch real-time token data from DexScreener API
+  useEffect(() => {
+    const fetchTokenData = async () => {
+      try {
+        // DexScreener API for ZIGMA token
+        const response = await fetch('https://api.dexscreener.com/latest/dex/tokens/xT4tzTkuyXyDqCWeZyahrhnknPd8KBuuNjPngvqcyai');
+        const data = await response.json();
+        
+        console.log('DexScreener token data:', data);
+        
+        if (data.pairs && data.pairs.length > 0) {
+          const pair = data.pairs[0];
+          const price = parseFloat(pair.priceUsd) || 0;
+          const liquidity = pair.liquidity?.usd || 0;
+          const volume24h = pair.volume?.h24 || 0;
+          const fdv = pair.fdv || 0;
+          
+          setTokenStats({
+            price: price,
+            marketCap: fdv,
+            totalSupply: 1000000000,
+            circulatingSupply: 900000000,
+            holders: 154,
+            volume24h: volume24h,
+            priceChange24h: pair.priceChange?.h24 || 0
+          });
+          
+          console.log('✅ Real token data from DexScreener:', {
+            price,
+            marketCap: fdv,
+            volume24h,
+            priceChange24h: pair.priceChange?.h24
+          });
+        } else {
+          console.log('❌ No pair data found');
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch token data from DexScreener:', error);
+        // Fallback to hardcoded data if API fails
+        setTokenStats({
+          price: 0.000028,
+          marketCap: 28000,
+          totalSupply: 1000000000,
+          circulatingSupply: 900000000,
+          holders: 154,
+          volume24h: 96000,
+          priceChange24h: 0
+        });
+      }
+    };
+
+    // Initial fetch
+    fetchTokenData();
+    
+    // Update every 30 seconds for live data
+    const interval = setInterval(fetchTokenData, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
+  useEffect(() => {
+    const fetchPaymentConfig = async () => {
+      try {
+        const response = await fetch('/api/payments/config');
+        const data = await response.json();
+        setPaymentConfig(data);
+      } catch (error) {
+        console.error('Failed to fetch payment config:', error);
+        // Set default config if API fails
+        setPaymentConfig({
+          paymentWalletAddress: 'A6qvQHnQimYWfSy3nyUtQy1euPwVamNHauuvFuATpvmQ',
+          requiredAmount: 25,
+          creditsPerPayment: 25,
+          pricePerCredit: 1
+        });
+      }
+    };
+
+    fetchPaymentConfig();
+  }, []);
+
+  // Fetch credit balance
+  useEffect(() => {
+    const fetchCredits = async () => {
+      try {
+        const response = await fetch('/api/credits/balance');
+        const data = await response.json();
+        setCredits(data.currentCredits || 0);
+        setTotalCreditsEarned(data.totalCreditsEarned || 0);
+      } catch (error) {
+        console.error('Failed to fetch credits:', error);
+      }
+    };
+
+    fetchCredits();
+    // Refresh credits every 30 seconds
+    const interval = setInterval(fetchCredits, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const [userBalance, setUserBalance] = useState(0);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [isLaunchingSoon] = useState(true);
+
+  const handlePurchaseCredits = () => {
+    setIsPaymentModalOpen(true);
+  };
+
+  const handlePaymentSuccess = () => {
+    // Refresh credits after successful payment
+    fetch('/api/credits/balance')
+      .then(res => res.json())
+      .then(data => {
+        setCredits(data.currentCredits || 0);
+        setTotalCreditsEarned(data.totalCreditsEarned || 0);
+      });
+  };
 
   const plans: Plan[] = [
     {
@@ -122,7 +243,7 @@ const Zigma = () => {
             </div>
             <div className="flex items-center gap-4">
               <a 
-              href="https://cyreneai.com/preview-page/zigma" 
+              href="https://cyreneai.com/trade/zigma" 
               target="_blank" 
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 border border-green-500 text-green-400 hover:bg-green-900/20 px-4 py-2 rounded-md text-sm font-medium transition-colors"
@@ -141,8 +262,10 @@ const Zigma = () => {
                 <TrendingUp className="w-5 h-5 text-blue-400" />
                 <div>
                   <p className="text-sm text-gray-400">Market Cap</p>
-                  <p className="text-xl font-mono">TBA</p>
-                  <p className="text-sm text-blue-300">Initial: $5M</p>
+                  <p className="text-xl font-mono">
+                    {tokenStats.marketCap > 0 ? formatCurrency(tokenStats.marketCap) : 'Loading...'}
+                  </p>
+                  <p className="text-sm text-blue-300">Live Data</p>
                 </div>
               </div>
             </CardContent>
@@ -152,9 +275,23 @@ const Zigma = () => {
               <div className="flex items-center gap-3">
                 <Users className="w-5 h-5 text-purple-400" />
                 <div>
+                  <p className="text-sm text-gray-400">Holders</p>
+                  <p className="text-xl font-mono">
+                    {tokenStats.holders > 0 ? tokenStats.holders.toLocaleString() : 'Loading...'}
+                  </p>
+                  <p className="text-sm text-purple-300">Unique Addresses</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gray-900 border-gray-700">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <Wallet className="w-5 h-5 text-orange-400" />
+                <div>
                   <p className="text-sm text-gray-400">Total Supply</p>
                   <p className="text-xl font-mono">{formatNumber(tokenStats.totalSupply)}</p>
-                  <p className="text-sm text-purple-300">90% Public</p>
+                  <p className="text-sm text-orange-300">90% Public</p>
                 </div>
               </div>
             </CardContent>
@@ -162,23 +299,13 @@ const Zigma = () => {
           <Card className="bg-gray-900 border-gray-700">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <Zap className="w-5 h-5 text-yellow-400" />
+                <TrendingUp className="w-5 h-5 text-cyan-400" />
                 <div>
-                  <p className="text-sm text-gray-400">Signal Accuracy</p>
-                  <p className="text-xl font-mono">68%-72%</p>
-                  <p className="text-sm text-yellow-300">Beta Performance</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gray-900 border-gray-700">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <Shield className="w-5 h-5 text-green-400" />
-                <div>
-                  <p className="text-sm text-gray-400">Launch Date</p>
-                  <p className="text-xl font-mono">Jan 27</p>
-                  <p className="text-sm text-green-300">Fair Launch</p>
+                  <p className="text-sm text-gray-400">Volume (24h)</p>
+                  <p className="text-xl font-mono">
+                    {tokenStats.volume24h > 0 ? formatCurrency(tokenStats.volume24h) : 'Loading...'}
+                  </p>
+                  <p className="text-sm text-cyan-300">Trading Volume</p>
                 </div>
               </div>
             </CardContent>
@@ -439,57 +566,51 @@ const Zigma = () => {
 
           <TabsContent value="plans" className="space-y-6">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-green-400">Choose Your Plan</h2>
-              <p className="text-gray-400 mt-2">Unlock premium features with $ZIGMA tokens</p>
+              <h2 className="text-2xl font-bold text-green-400">Pay-to-Chat Credits</h2>
+              <p className="text-gray-400 mt-2">Purchase credits to access AI chat predictions</p>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {plans.map((plan) => (
-                <Card 
-                  key={plan.id}
-                  className={`bg-gray-900 border-gray-700 relative ${
-                    plan.popular ? 'ring-2 ring-green-500' : ''
-                  }`}
+
+            {/* Credits Display */}
+            <CreditsDisplay
+              currentCredits={credits}
+              totalCreditsEarned={totalCreditsEarned}
+              creditsPerChat={1}
+              lastChatAt={null}
+            />
+
+            {/* Purchase Credits Button */}
+            <Card className="bg-gradient-to-r from-green-900/20 to-blue-900/20 border-green-500/30">
+              <CardContent className="p-6 text-center">
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <Coins className="w-8 h-8 text-green-400" />
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Purchase Chat Credits</h3>
+                    <p className="text-sm text-gray-400">Pay $25 worth of ZIGMA tokens = 25 chat credits</p>
+                  </div>
+                </div>
+                <Button
+                  className="w-full max-w-md bg-green-600 hover:bg-green-700"
+                  onClick={handlePurchaseCredits}
                 >
-                  {plan.popular && (
-                    <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-green-600">
-                      Most Popular
-                    </Badge>
-                  )}
-                  <CardHeader className="text-center">
-                    <CardTitle className="text-xl">{plan.name}</CardTitle>
-                    <div className="space-y-2">
-                      <div className="text-3xl font-bold text-green-400">
-                        {formatCurrency(plan.price)}
-                      </div>
-                      <div className="text-gray-400">
-                        {plan.duration}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <ul className="space-y-2">
-                      {plan.features.map((feature, index) => (
-                        <li key={index} className="flex items-center gap-2 text-sm">
-                          <ArrowUpRight className="w-4 h-4 text-green-400 flex-shrink-0" />
-                          <span className="text-gray-300">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <Button 
-                      className={`w-full ${
-                        plan.popular 
-                          ? 'bg-green-600 hover:bg-green-700' 
-                          : 'bg-gray-700 hover:bg-gray-600'
-                      }`}
-                      onClick={() => handlePurchase(plan.id)}
-                    >
-                      {userBalance >= plan.tokensRequired ? 'Subscribe Now' : 'Buy Tokens First'}
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                  Buy 25 Credits ($25)
+                </Button>
+                <p className="text-xs text-gray-500 mt-2">
+                  1 credit per chat • Credits persist until used • No daily limit
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Payment Modal */}
+            {paymentConfig && (
+              <PaymentModal
+                isOpen={isPaymentModalOpen}
+                onClose={() => setIsPaymentModalOpen(false)}
+                walletAddress={paymentConfig.paymentWalletAddress}
+                requiredAmount={paymentConfig.requiredAmount}
+                creditsPerPayment={paymentConfig.creditsPerPayment}
+                onPaymentSuccess={handlePaymentSuccess}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="utility" className="space-y-6">

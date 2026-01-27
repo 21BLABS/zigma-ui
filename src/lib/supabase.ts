@@ -491,83 +491,27 @@ export const db = {
     return data || [];
   },
 
-  // Chat usage tracking functions
-  async getChatUsage(userId: string, walletAddress?: string) {
-    const now = new Date();
-    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    
-    // @ts-ignore
-    const { data, error } = await supabase
-      .from('chat_usage')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('wallet_address', walletAddress || '')
-      .gte('last_used_at', twentyFourHoursAgo.toISOString())
-      .single();
-    
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
-  },
-
-  async incrementChatUsage(userId: string, walletAddress?: string) {
-    const now = new Date();
-    const resetAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours from now
-    
-    // First try to get existing usage
-    const existingUsage = await this.getChatUsage(userId, walletAddress);
-    
-    if (existingUsage) {
-      // Update existing usage
-      // @ts-ignore
-      const { data, error } = await supabase
-        .from('chat_usage')
-        .update({
-          usage_count: existingUsage.usage_count + 1,
-          last_used_at: now.toISOString(),
-          updated_at: now.toISOString()
-        } as any)
-        .eq('id', existingUsage.id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
-    } else {
-      // Create new usage record
-      // @ts-ignore
-      const { data, error } = await supabase
-        .from('chat_usage')
-        .insert({
-          user_id: userId,
-          wallet_address: walletAddress || '',
-          usage_count: 1,
-          last_used_at: now.toISOString(),
-          reset_at: resetAt.toISOString(),
-          created_at: now.toISOString(),
-          updated_at: now.toISOString()
-        } as any)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
+  // Credit balance functions (replaces old chat usage tracking)
+  async getCreditBalance(userId: string) {
+    try {
+      const response = await fetch('/api/credits/balance?userId=' + userId);
+      if (!response.ok) {
+        console.error('Failed to fetch credit balance:', response.statusText);
+        return { canUse: false, remainingUses: 0, resetAt: null };
+      }
+      const data = await response.json();
+      return {
+        canUse: data.currentCredits > 0,
+        remainingUses: data.currentCredits,
+        resetAt: null
+      };
+    } catch (error) {
+      console.error('Error fetching credit balance:', error);
+      return { canUse: false, remainingUses: 0, resetAt: null };
     }
   },
 
   async canUseChat(userId: string, walletAddress?: string) {
-    const usage = await this.getChatUsage(userId, walletAddress);
-    
-    if (!usage) {
-      return { canUse: true, remainingUses: 5, resetAt: null };
-    }
-    
-    const remainingUses = Math.max(0, 5 - usage.usage_count);
-    const canUse = remainingUses > 0;
-    
-    return {
-      canUse,
-      remainingUses,
-      resetAt: usage.reset_at
-    };
+    return this.getCreditBalance(userId);
   },
 };

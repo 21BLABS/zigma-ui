@@ -11,6 +11,8 @@ interface User {
   wallet_type?: 'phantom' | 'solflare' | 'backpack';
   avatar?: string;
   auth_provider: 'email' | 'wallet';
+  has_zigma_tokens?: boolean;
+  zigma_balance?: number;
 }
 
 interface AuthContextType {
@@ -18,11 +20,20 @@ interface AuthContextType {
   supabaseUser: SupabaseUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  hasTokenAccess: boolean;
+  tokenStatus: {
+    hasTokens: boolean;
+    balance: number;
+    requiresToken: boolean;
+    lastChecked?: string;
+  };
   login: (email: string, password: string) => Promise<void>;
   loginWithWallet: (walletType?: 'backpack') => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
+  checkTokenStatus: () => Promise<void>;
+  verifyWalletTokens: (walletAddress: string) => Promise<{ hasTokens: boolean; balance: number }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,6 +55,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [useFallback, setUseFallback] = useState(false); // Enable Supabase
+  const [hasTokenAccess, setHasTokenAccess] = useState(false);
+  const [tokenStatus, setTokenStatus] = useState({
+    hasTokens: false,
+    balance: 0,
+    requiresToken: true,
+    lastChecked: undefined as string | undefined
+  });
   const fallbackAuth = useFallbackAuth();
 
   useEffect(() => {
@@ -103,6 +121,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     initializeAuth();
   }, []);
+
+  // Check token status when user authenticates
+  useEffect(() => {
+    if (user && user.id) {
+      checkTokenStatus();
+    }
+  }, [user]);
 
   const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
     try {
@@ -352,6 +377,75 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     await supabase.auth.signOut();
   };
+
+  const checkTokenStatus = async () => {
+    if (!user || !user.id) {
+      console.log('checkTokenStatus: No user found');
+      return;
+    }
+
+    console.log(`checkTokenStatus: Checking credits for user: ${user.id}`);
+    
+    try {
+      // Use the new credit API to check user's credit balance
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/credits/balance?userId=${user.id}`);
+      
+      if (!response.ok) {
+        console.error('Failed to fetch credit balance:', response.statusText);
+        return;
+      }
+
+      const data = await response.json();
+      
+      console.log(`Credit check result: currentCredits=${data.currentCredits}, totalEarned=${data.totalCreditsEarned}`);
+      
+      setTokenStatus({
+        hasTokens: data.currentCredits > 0,
+        balance: data.currentCredits,
+        requiresToken: true,
+        lastChecked: new Date().toISOString()
+      });
+      
+      setHasTokenAccess(data.currentCredits > 0);
+    } catch (error) {
+      console.error('Error checking credit status:', error);
+      setTokenStatus({
+        hasTokens: false,
+        balance: 0,
+        requiresToken: true,
+        lastChecked: new Date().toISOString()
+      });
+      setHasTokenAccess(false);
+    }
+  };
+
+  const verifyWalletTokens = async (walletAddress: string) => {
+    try {
+      // Use the new credit API to check wallet credits
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/credits/balance`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to verify wallet credits');
+      }
+
+      const data = await response.json();
+      return {
+        hasTokens: data.currentCredits > 0,
+        balance: data.currentCredits
+      };
+    } catch (error) {
+      console.error('Error verifying wallet credits:', error);
+      return {
+        hasTokens: false,
+        balance: 0
+      };
+    }
+  };
   const currentUser = useFallback ? fallbackAuth.user : user;
   const currentIsLoading = useFallback ? fallbackAuth.isLoading : isLoading;
   const currentIsAuthenticated = useFallback ? fallbackAuth.isAuthenticated : !!user;
@@ -361,11 +455,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     supabaseUser,
     isLoading: currentIsLoading,
     isAuthenticated: currentIsAuthenticated,
+    hasTokenAccess,
+    tokenStatus,
     login,
     loginWithWallet,
     signup,
     resetPassword,
     logout,
+    checkTokenStatus,
+    verifyWalletTokens,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

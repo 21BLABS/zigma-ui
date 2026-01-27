@@ -20,6 +20,32 @@ const TokenUtility = () => {
             <p>No promises.</p>
             <p>Usage aligned.</p>
           </div>
+
+          <div className="border-t border-border pt-4 mt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">CONTRACT ADDRESS</p>
+                <p className="text-xs font-mono text-green-400">xT4tzTkuyXyDqCWeZyahrhnknPd8KBuuNjPngvqcyai</p>
+              </div>
+              <button 
+                onClick={() => navigator.clipboard.writeText('xT4tzTkuyXyDqCWeZyahrhnknPd8KBuuNjPngvqcyai')}
+                className="text-xs bg-green-600/20 border border-green-500/30 text-green-400 px-3 py-1 rounded hover:bg-green-600/30 transition-colors"
+              >
+                Copy
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 text-center">
+            <a 
+              href="https://cyreneai.com/trade/zigma" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-md font-medium transition-colors"
+            >
+              Buy ZIGMA Now
+            </a>
+          </div>
         </div>
       </div>
     </section>

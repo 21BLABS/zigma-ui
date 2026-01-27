@@ -1,12 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
-import { ChevronDown, BookOpen, Send } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Send } from "lucide-react";
 
 const Footer = () => {
   const links = [
@@ -19,15 +13,6 @@ const Footer = () => {
     { label: "Signals", to: "/signals", disabled: false },
     { label: "Basket", to: "/basket", disabled: true },
     { label: "ZIGMA Token", to: "/zigma", disabled: false },
-  ];
-
-  const docsLinks = [
-    { label: "Documentation", to: "/docs" },
-    { label: "API Documentation", to: "/api-documentation" },
-    { label: "SDK Guide", to: "/sdk-guide" },
-    { label: "User Guide", to: "/user-guide" },
-    { label: "Manifesto", to: "/manifesto" },
-    { label: "FAQ", to: "/faq" },
   ];
 
 const otherLinks = [
@@ -76,24 +61,6 @@ const otherLinks = [
                 </Link>
               )
             ))}
-            
-            {/* Docs Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-1 terminal-link text-green-400">
-                <BookOpen className="w-3 h-3" />
-                <span>Docs</span>
-                <ChevronDown className="w-3 h-3" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="bg-black border-green-500/30">
-                {docsLinks.map((link) => (
-                  <DropdownMenuItem key={link.to} asChild>
-                    <Link to={link.to} className="text-xs uppercase tracking-[0.15em]">
-                      {link.label}
-                    </Link>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
             
             {otherLinks.map((link) => (
               <Link key={link.label} to={link.to} className="terminal-link">

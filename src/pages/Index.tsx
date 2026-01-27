@@ -612,7 +612,7 @@ const Index = () => {
                 Launch chat
               </Link>
               <a
-                href="https://cyreneai.com/preview-page/zigma"
+                href="https://cyreneai.com/trade/zigma"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-full border border-green-400/60 bg-green-600/20 px-5 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-green-200 hover:bg-green-400/20"
