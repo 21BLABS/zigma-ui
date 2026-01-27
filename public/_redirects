@@ -1,1 +1,5 @@
+# SPA routing - redirect all non-file requests to index.html
 /*    /index.html   200
+
+# API routes to backend
+/api/*    https://api.zigma.pro/:splat   200

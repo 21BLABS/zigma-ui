@@ -5,11 +5,14 @@
 [build.environment]
   NODE_VERSION = "18"
 
+# SPA routing - redirect all non-file requests to index.html
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+  force = false
 
+# API routes to backend
 [[redirects]]
   from = "/api/*"
   to = "https://api.zigma.pro/:splat"
@@ -20,3 +23,12 @@
 
 [context.deploy-preview.environment]
   VITE_API_BASE_URL = "https://api.zigma.pro"
+
+# Headers for security and performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
