@@ -261,7 +261,7 @@ const Index = () => {
       try {
         const fetchedAt = Date.now();
         let dataData = null;
-        let statusData = { status: 'operational', lastRun: null, uptime: 2592000, posts: 0, marketsScanned: 5000, marketsQualified: 15, marketsMonitored: 7 };
+        let statusData = { status: 'operational', lastRun: null, uptime: 2592000, posts: 0, marketsScanned: 7000, marketsQualified: 14, marketsMonitored: 9 };
         let logsData = { logs: 'Using persisted data from Supabase.' };
 
         // Try to fetch from Supabase first (faster, more reliable)

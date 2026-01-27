@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,12 +11,22 @@ import { Loader2, Wallet, Mail, User, ExternalLink } from 'lucide-react';
 import '@/debug-auth';
 
 const Auth = () => {
-  const { login, signup, loginWithWallet, resetPassword, isLoading } = useAuth();
+  const { login, signup, loginWithWallet, resetPassword, isAuthenticated, isLoading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Redirect to home page if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      const from = location.state?.from?.pathname || '/';
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, isLoading, navigate, location.state]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +35,8 @@ const Auth = () => {
     
     try {
       await login(email, password);
-      setSuccess('Login successful!');
+      setSuccess('Login successful! Redirecting...');
+      // Redirect will be handled by useEffect
     } catch (err) {
       setError('Login failed. Please check your credentials.');
     }
@@ -55,7 +67,8 @@ const Auth = () => {
     
     try {
       await signup(email, password, name);
-      setSuccess('Account created successfully!');
+      setSuccess('Signup successful! Redirecting...');
+      // Redirect will be handled by useEffect
     } catch (err) {
       setError('Signup failed. Please try again.');
     }
@@ -67,7 +80,8 @@ const Auth = () => {
     
     try {
       await loginWithWallet(walletType);
-      setSuccess(`${walletType.charAt(0).toUpperCase() + walletType.slice(1)} wallet connected successfully!`);
+      setSuccess(`${walletType.charAt(0).toUpperCase() + walletType.slice(1)} wallet connected successfully! Redirecting...`);
+      // Redirect will be handled by useEffect
     } catch (err: any) {
       setError(err.message || 'Wallet connection failed.');
     }

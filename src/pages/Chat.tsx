@@ -11,6 +11,7 @@ import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
 import { useChatPersistence } from "@/hooks/useChatPersistence";
 import { useAuth } from "@/contexts/AuthContext";
+import { db } from "@/lib/supabase";
 
 // ============================================================
 // TYPES
@@ -729,6 +730,8 @@ const Chat = () => {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [showSimulator, setShowSimulator] = useState(false);
   const [requestStartTime, setRequestStartTime] = useState<number | null>(null);
+  const [chatUsage, setChatUsage] = useState<{ canUse: boolean; remainingUses: number; resetAt: string | null }>({ canUse: true, remainingUses: 5, resetAt: null });
+  const [isLoadingUsage, setIsLoadingUsage] = useState(false);
   const feedRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -742,6 +745,27 @@ const Chat = () => {
   // Computed values
   const isFavorite = matchedMarket ? favorites.includes(matchedMarket.id) : false;
   const totalPages = Math.ceil(messages.length / messagesPerPage);
+
+  // Check chat usage on component mount and when user changes
+  useEffect(() => {
+    const checkUsage = async () => {
+      if (!isAuthenticated || !user) return;
+      
+      setIsLoadingUsage(true);
+      try {
+        const usage = await db.canUseChat(user.id, user.wallet_address);
+        setChatUsage(usage);
+      } catch (error) {
+        console.error('Failed to check chat usage:', error);
+        // Default to allowing usage if check fails
+        setChatUsage({ canUse: true, remainingUses: 5, resetAt: null });
+      } finally {
+        setIsLoadingUsage(false);
+      }
+    };
+
+    checkUsage();
+  }, [isAuthenticated, user]);
 
   // Load saved data from localStorage
   useEffect(() => {
@@ -907,6 +931,18 @@ const Chat = () => {
     onSuccess: async (data) => {
       const processingTime = requestStartTime ? Date.now() - requestStartTime : undefined;
       
+      // Increment usage for wallet users
+      if (isAuthenticated && user && user.auth_provider === 'wallet') {
+        try {
+          await db.incrementChatUsage(user.id, user.wallet_address);
+          // Refresh usage data
+          const updatedUsage = await db.canUseChat(user.id, user.wallet_address);
+          setChatUsage(updatedUsage);
+        } catch (error) {
+          console.error('Failed to increment chat usage:', error);
+        }
+      }
+      
       // Save to database
       if (isAuthenticated && user) {
         try {
@@ -974,9 +1010,18 @@ const Chat = () => {
     (input.trim() || marketId.trim() || polymarketUser.trim()) && mutation.status !== "pending"
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
+
+    // Check usage limits for wallet users
+    if (isAuthenticated && user && user.auth_provider === 'wallet') {
+      if (!chatUsage.canUse) {
+        setError(`Chat usage limit reached. You have used all 5 chats in the last 24 hours. Next reset: ${new Date(chatUsage.resetAt!).toLocaleString()}`);
+        return;
+      }
+    }
+
     mutation.mutate();
   };
 
@@ -1425,7 +1470,29 @@ const Chat = () => {
           {/* Left Panel - Form */}
           <form onSubmit={handleSubmit} className="space-y-6 bg-gray-950/80 border border-green-500/20 p-6 rounded-xl">
             <div>
-              <label className="text-xs uppercase tracking-wider text-muted-foreground">Ask Zigma</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs uppercase tracking-wider text-muted-foreground">Ask Zigma</label>
+                {isAuthenticated && user && user.auth_provider === 'wallet' && (
+                  <div className="flex items-center gap-2">
+                    {isLoadingUsage ? (
+                      <div className="text-xs text-gray-400">Loading usage...</div>
+                    ) : (
+                      <div className={`text-xs px-2 py-1 rounded ${
+                        chatUsage.canUse 
+                          ? 'bg-green-900/30 text-green-300 border border-green-500/30' 
+                          : 'bg-red-900/30 text-red-300 border border-red-500/30'
+                      }`}>
+                        {chatUsage.remainingUses}/5 chats left
+                        {!chatUsage.canUse && chatUsage.resetAt && (
+                          <span className="block text-[10px] mt-1">
+                            Reset: {new Date(chatUsage.resetAt).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               <Textarea
                 ref={inputRef}
                 value={input}

@@ -132,7 +132,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         const { data: createdProfile, error: createError } = await supabase
           .from('users')
-          .insert(newUser)
+          .insert(newUser as any)
           .select()
           .single();
 
@@ -182,26 +182,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (walletType === 'phantom') {
         // Phantom Wallet (Solana) - Desktop and Mobile
         if (typeof window !== 'undefined') {
+          console.log('Attempting Phantom connection...');
+          
           // Try desktop Phantom first
           if ((window as any).phantom?.solana) {
             try {
+              console.log('Found Phantom desktop, connecting...');
               const response = await (window as any).phantom.solana.connect();
               walletAddress = response.publicKey.toString();
+              console.log('Phantom desktop connected successfully:', walletAddress);
             } catch (err: any) {
               console.error('Phantom desktop connection failed:', err);
               // Try mobile Phantom deep link
               if ((window as any).solana?.isPhantom) {
-                const response = await (window as any).solana.connect();
-                walletAddress = response.publicKey.toString();
+                try {
+                  console.log('Trying Phantom mobile...');
+                  const response = await (window as any).solana.connect();
+                  walletAddress = response.publicKey.toString();
+                  console.log('Phantom mobile connected successfully:', walletAddress);
+                } catch (mobileErr: any) {
+                  console.error('Phantom mobile also failed:', mobileErr);
+                  throw new Error('Phantom wallet connection failed. Please ensure Phantom is installed and unlocked.');
+                }
               } else {
                 throw new Error('Phantom wallet connection failed. Please ensure Phantom is installed and unlocked.');
               }
             }
           } else if ((window as any).solana?.isPhantom) {
             // Mobile Phantom
-            const response = await (window as any).solana.connect();
-            walletAddress = response.publicKey.toString();
+            try {
+              console.log('Found Phantom mobile, connecting...');
+              const response = await (window as any).solana.connect();
+              walletAddress = response.publicKey.toString();
+              console.log('Phantom mobile connected successfully:', walletAddress);
+            } catch (err: any) {
+              console.error('Phantom mobile connection failed:', err);
+              throw new Error('Phantom wallet connection failed. Please ensure Phantom is installed and unlocked.');
+            }
           } else {
+            console.log('Phantom not detected. Available wallets:', {
+              phantom: !!(window as any).phantom,
+              phantomSolana: !!(window as any).phantom?.solana,
+              solana: !!(window as any).solana,
+              isPhantom: !!(window as any).solana?.isPhantom
+            });
             throw new Error('Phantom wallet not installed. Please install Phantom from phantom.app');
           }
         } else {
