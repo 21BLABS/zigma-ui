@@ -1,5 +1,1 @@
-# Handle all routes with index.html for SPA
 /*    /index.html   200
-
-# API fallback to backend server
-/api/*  https://api.zigma.pro/:splat  200

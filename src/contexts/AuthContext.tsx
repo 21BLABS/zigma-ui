@@ -173,35 +173,63 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const loginWithWallet = async (walletType: 'phantom' | 'solflare' | 'backpack' = 'phantom') => {
     if (useFallback) {
-      return fallbackAuth.loginWithWallet();
+      return fallbackAuth.loginWithWallet(walletType);
     }
 
     try {
       let walletAddress: string;
       
       if (walletType === 'phantom') {
-        // Phantom Wallet (Solana)
-        if (typeof window !== 'undefined' && (window as any).phantom?.solana) {
-          const response = await (window as any).phantom.solana.connect();
-          walletAddress = response.publicKey.toString();
+        // Phantom Wallet (Solana) - Desktop and Mobile
+        if (typeof window !== 'undefined') {
+          // Try desktop Phantom first
+          if ((window as any).phantom?.solana) {
+            try {
+              const response = await (window as any).phantom.solana.connect();
+              walletAddress = response.publicKey.toString();
+            } catch (err: any) {
+              console.error('Phantom desktop connection failed:', err);
+              // Try mobile Phantom deep link
+              if ((window as any).solana?.isPhantom) {
+                const response = await (window as any).solana.connect();
+                walletAddress = response.publicKey.toString();
+              } else {
+                throw new Error('Phantom wallet connection failed. Please ensure Phantom is installed and unlocked.');
+              }
+            }
+          } else if ((window as any).solana?.isPhantom) {
+            // Mobile Phantom
+            const response = await (window as any).solana.connect();
+            walletAddress = response.publicKey.toString();
+          } else {
+            throw new Error('Phantom wallet not installed. Please install Phantom from phantom.app');
+          }
         } else {
-          throw new Error('Phantom wallet not installed');
+          throw new Error('Window not available');
         }
       } else if (walletType === 'solflare') {
         // Solflare Wallet (Solana)
         if (typeof window !== 'undefined' && (window as any).solflare) {
-          const response = await (window as any).solflare.connect();
-          walletAddress = response.publicKey.toString();
+          try {
+            const response = await (window as any).solflare.connect();
+            walletAddress = response.publicKey.toString();
+          } catch (err: any) {
+            throw new Error('Solflare wallet connection failed. Please ensure Solflare is installed and unlocked.');
+          }
         } else {
-          throw new Error('Solflare wallet not installed');
+          throw new Error('Solflare wallet not installed. Please install Solflare from solflare.com');
         }
       } else if (walletType === 'backpack') {
         // Backpack Wallet (Solana)
         if (typeof window !== 'undefined' && (window as any).backpack) {
-          const response = await (window as any).backpack.connect();
-          walletAddress = response.publicKey.toString();
+          try {
+            const response = await (window as any).backpack.connect();
+            walletAddress = response.publicKey.toString();
+          } catch (err: any) {
+            throw new Error('Backpack wallet connection failed. Please ensure Backpack is installed and unlocked.');
+          }
         } else {
-          throw new Error('Backpack wallet not installed');
+          throw new Error('Backpack wallet not installed. Please install Backpack from backpack.app');
         }
       } else {
         throw new Error('Unsupported wallet type');
@@ -218,8 +246,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('User rejected the request. Please try again.');
       } else if (error.code === -32002) {
         throw new Error('Request already pending. Please refresh the page and try again.');
+      } else if (error.message && error.message.includes('not installed')) {
+        throw error; // Pass through installation messages
       } else {
-        throw new Error(`Wallet connection failed: ${error.message}`);
+        throw new Error(`Wallet connection failed: ${error.message || 'Unknown error'}`);
       }
     }
   };

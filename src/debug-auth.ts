@@ -13,9 +13,11 @@ export const debugAuth = () => {
   
   // Check Solana wallets
   if (typeof window !== 'undefined') {
-    console.log('Phantom available:', !!(window as any).phantom?.solana);
+    console.log('Phantom desktop available:', !!(window as any).phantom?.solana);
+    console.log('Phantom mobile available:', !!(window as any).solana?.isPhantom);
     console.log('Solflare available:', !!(window as any).solflare);
     console.log('Backpack available:', !!(window as any).backpack);
+    console.log('Any Solana wallet available:', !!(window as any).solana);
   }
 };
 
