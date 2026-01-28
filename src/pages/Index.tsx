@@ -261,8 +261,8 @@ const Index = () => {
       try {
         const fetchedAt = Date.now();
         let dataData = null;
-        let statusData = { status: 'operational', lastRun: null, uptime: 2592000, posts: 0, marketsScanned: 7000, marketsQualified: 14, marketsMonitored: 9 };
-        let logsData = { logs: 'Using persisted data from Supabase.' };
+        let statusData: any = null; // Will be populated by backend /status endpoint
+        let logsData = { logs: '' };
 
         // Try to fetch from Supabase first (faster, more reliable)
         if (supabase) {
@@ -316,13 +316,13 @@ const Index = () => {
         const cycleSummary = dataData?.cycleSummary || {};
 
         const mergedStatus: SystemStatus = {
-          status: statusData.status || 'operational',
-          uptime: statusData.uptime ?? cycleSummary.uptime ?? 0,
-          lastRun: statusData.lastRun || cycleSummary.lastRun || logInsights.lastCycle || null,
-          marketsScanned: statusData.marketsScanned ?? cycleSummary.marketsFetched ?? logInsights.marketsScanned,
-          marketsQualified: statusData.marketsQualified ?? cycleSummary.marketsEligible ?? logInsights.marketsQualified,
-          marketsMonitored: statusData.marketsMonitored ?? cycleSummary.marketsEligible ?? logInsights.marketsAnalyzed,
-          posts: statusData.posts ?? cycleSummary.signalsGenerated ?? 0,
+          status: statusData?.status || 'operational',
+          uptime: statusData?.uptime ?? cycleSummary.uptime ?? 0,
+          lastRun: statusData?.lastRun || cycleSummary.lastRun || dataData?.lastRun || logInsights.lastCycle || null,
+          marketsScanned: statusData?.marketsScanned ?? cycleSummary.marketsFetched ?? logInsights.marketsScanned ?? 0,
+          marketsQualified: statusData?.marketsQualified ?? cycleSummary.marketsEligible ?? logInsights.marketsQualified ?? 0,
+          marketsMonitored: statusData?.marketsMonitored ?? cycleSummary.marketsAnalyzed ?? logInsights.marketsAnalyzed ?? 0,
+          posts: statusData?.posts ?? cycleSummary.signalsGenerated ?? 0,
           heartbeat: fetchedAt,
           dataTimestamp: fetchedAt,
         };
@@ -612,12 +612,12 @@ const Index = () => {
                 Launch chat
               </Link>
               <a
-                href="https://cyreneai.com/trade/zigma"
+                href="https://phantom.com/tokens/solana/xT4tzTkuyXyDqCWeZyahrhnknPd8KBuuNjPngvqcyai?referralId=gkr7v4xfqno"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-green-400/60 bg-green-600/20 px-5 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-green-200 hover:bg-green-400/20"
+                className="inline-flex items-center gap-2 rounded-full border border-purple-400/60 bg-purple-600/20 px-5 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-purple-200 hover:bg-purple-400/20"
               >
-                Buy ZIGMA now
+                Buy ZIGMA
               </a>
             </div>
           </div>
@@ -797,7 +797,12 @@ const Index = () => {
                                     </button>
                                   </div>
                                   <span className="text-gray-500">
-                                    {signal.timestamp ? new Date(signal.timestamp).toLocaleTimeString() : ''}
+                                    {signal.timestamp ? new Date(signal.timestamp).toLocaleString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    }) : ''}
                                   </span>
                                 </div>
                               </div>

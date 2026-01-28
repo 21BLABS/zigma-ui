@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import SiteHeader from '@/components/SiteHeader';
 import Footer from '@/components/Footer';
 import { PaymentModal } from '@/components/PaymentModal';
-import { useAuth } from '@/contexts/AuthContext';
+import { useMagicAuth } from '@/contexts/MagicAuthContext';
 import { useChatPersistence } from '@/hooks/useChatPersistence';
 import { db } from '@/lib/supabase';
 
@@ -59,7 +59,7 @@ const Chat = () => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Hooks
-  const { user, isAuthenticated, hasTokenAccess, tokenStatus, checkTokenStatus } = useAuth();
+  const { user, isAuthenticated, chatStatus } = useMagicAuth();
   const chatPersistence = useChatPersistence({
     autoSave: true,
     enableAnalytics: true
@@ -265,8 +265,8 @@ const Chat = () => {
   };
 
   const handlePaymentSuccess = () => {
-    // Refresh credits after successful payment
-    checkTokenStatus();
+    // Refresh chat status after successful payment
+    // chatStatus will auto-refresh when wallet balance changes
   };
 
   // Render helpers
@@ -299,7 +299,7 @@ const Chat = () => {
         </header>
 
         {/* Credit Access Restriction */}
-        {isAuthenticated && !hasTokenAccess && (
+        {isAuthenticated && chatStatus && !chatStatus.canChat && (
           <div className="mb-8 bg-red-900/20 border border-red-500/30 rounded-xl p-6">
             <div className="flex items-start gap-4">
               <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center flex-shrink-0">
@@ -426,16 +426,16 @@ const Chat = () => {
             )}
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <Button type="button" variant="outline" onClick={() => setShowSuggestions(!showSuggestions)} className="border-gray-700 text-gray-200 hover:bg-gray-900" disabled={!hasTokenAccess}>
+              <Button type="button" variant="outline" onClick={() => setShowSuggestions(!showSuggestions)} className="border-gray-700 text-gray-200 hover:bg-gray-900" disabled={chatStatus && !chatStatus.canChat}>
                 💡 Samples
               </Button>
-              <Button type="button" variant="outline" onClick={() => setShowHistory(!showHistory)} className="border-gray-700 text-gray-200 hover:bg-gray-900 relative" disabled={!hasTokenAccess}>
+              <Button type="button" variant="outline" onClick={() => setShowHistory(!showHistory)} className="border-gray-700 text-gray-200 hover:bg-gray-900 relative" disabled={chatStatus && !chatStatus.canChat}>
                 📜 History
                 {queryHistory.length > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 text-black text-[10px] rounded-full flex items-center justify-center">{queryHistory.length}</span>}
               </Button>
-              <Button type="button" variant="outline" onClick={handleReset} className="border-gray-700 text-gray-200 hover:bg-gray-900" disabled={!hasTokenAccess}>🗑️ Clear</Button>
-              <Button type="submit" disabled={!canSubmit || !hasTokenAccess} className="bg-green-600 hover:bg-green-500 text-black font-semibold col-span-2 md:col-span-3">
-                {isLoading ? "Analyzing…" : hasTokenAccess ? "Ask Zigma" : "Token Required"}
+              <Button type="button" variant="outline" onClick={handleReset} className="border-gray-700 text-gray-200 hover:bg-gray-900" disabled={chatStatus && !chatStatus.canChat}>🗑️ Clear</Button>
+              <Button type="submit" disabled={!canSubmit || (chatStatus && !chatStatus.canChat)} className="bg-green-600 hover:bg-green-500 text-black font-semibold col-span-2 md:col-span-3">
+                {isLoading ? "Analyzing…" : (chatStatus && chatStatus.canChat) ? "Ask Zigma" : "ZIGMA Tokens Required"}
               </Button>
             </div>
 
@@ -528,9 +528,9 @@ const Chat = () => {
       <PaymentModal
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
-        walletAddress={paymentConfig?.paymentWalletAddress || 'A6qvQHnQimYWfSy3nyUtQy1euPwVamNHauuvFuATpvmQ'}
-        requiredAmount={paymentConfig?.requiredAmount || 25}
-        creditsPerPayment={paymentConfig?.creditsPerPayment || 25}
+        walletAddress={user?.publicAddress || ''}
+        requiredAmount={1.41}
+        creditsPerPayment={3}
         onPaymentSuccess={handlePaymentSuccess}
       />
     </div>

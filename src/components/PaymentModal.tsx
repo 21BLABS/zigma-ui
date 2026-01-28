@@ -38,23 +38,34 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     setPaymentStatus('verifying');
 
     try {
-      // In production, this would check the blockchain for payment
-      // For now, simulate verification
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Check payment status via Helius webhook
+      const response = await fetch(`http://localhost:3001/api/helius/payment-status/${walletAddress}`);
+      const data = await response.json();
       
-      setPaymentStatus('success');
-      setCreditsBalance(creditsPerPayment);
-      
-      if (onPaymentSuccess) {
-        onPaymentSuccess();
-      }
+      if (data.success && data.hasRecentPayment) {
+        setPaymentStatus('success');
+        setCreditsBalance(creditsPerPayment);
+        
+        if (onPaymentSuccess) {
+          onPaymentSuccess();
+        }
 
-      setTimeout(() => {
-        onClose();
-      }, 2000);
+        setTimeout(() => {
+          onClose();
+        }, 2000);
+      } else {
+        // No payment found yet, show error
+        setPaymentStatus('error');
+        setTimeout(() => {
+          setPaymentStatus('pending');
+        }, 3000);
+      }
     } catch (error) {
       console.error('Payment verification failed:', error);
       setPaymentStatus('error');
+      setTimeout(() => {
+        setPaymentStatus('pending');
+      }, 3000);
     } finally {
       setIsVerifying(false);
     }

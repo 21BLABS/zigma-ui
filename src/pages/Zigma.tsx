@@ -7,8 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertCircle, TrendingUp, DollarSign, Zap, Shield, Users, Clock, ArrowUpRight, Wallet, ExternalLink, Coins } from 'lucide-react';
 import SiteHeader from '@/components/SiteHeader';
 import Footer from '@/components/Footer';
-import { PaymentModal } from '@/components/PaymentModal';
-import { CreditsDisplay } from '@/components/CreditsDisplay';
 
 interface TokenStats {
   price: number;
@@ -18,16 +16,6 @@ interface TokenStats {
   holders: number;
   volume24h: number;
   priceChange24h: number;
-}
-
-interface Plan {
-  id: string;
-  name: string;
-  price: number;
-  duration: string;
-  features: string[];
-  popular?: boolean;
-  tokensRequired: number;
 }
 
 const Zigma = () => {
@@ -41,11 +29,6 @@ const Zigma = () => {
     priceChange24h: 0
   });
 
-  // Credit system state
-  const [credits, setCredits] = useState(0);
-  const [totalCreditsEarned, setTotalCreditsEarned] = useState(0);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [paymentConfig, setPaymentConfig] = useState(null);
 
   // Fetch real-time token data from DexScreener API
   useEffect(() => {
@@ -106,99 +89,14 @@ const Zigma = () => {
     
     return () => clearInterval(interval);
   }, []);
-  useEffect(() => {
-    const fetchPaymentConfig = async () => {
-      try {
-        const response = await fetch('/api/payments/config');
-        const data = await response.json();
-        setPaymentConfig(data);
-      } catch (error) {
-        console.error('Failed to fetch payment config:', error);
-        // Set default config if API fails
-        setPaymentConfig({
-          paymentWalletAddress: 'A6qvQHnQimYWfSy3nyUtQy1euPwVamNHauuvFuATpvmQ',
-          requiredAmount: 25,
-          creditsPerPayment: 25,
-          pricePerCredit: 1
-        });
-      }
-    };
 
-    fetchPaymentConfig();
-  }, []);
-
-  // Fetch credit balance
-  useEffect(() => {
-    const fetchCredits = async () => {
-      try {
-        const response = await fetch('/api/credits/balance');
-        const data = await response.json();
-        setCredits(data.currentCredits || 0);
-        setTotalCreditsEarned(data.totalCreditsEarned || 0);
-      } catch (error) {
-        console.error('Failed to fetch credits:', error);
-      }
-    };
-
-    fetchCredits();
-    // Refresh credits every 30 seconds
-    const interval = setInterval(fetchCredits, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   const [userBalance, setUserBalance] = useState(0);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [isLaunchingSoon] = useState(true);
 
-  const handlePurchaseCredits = () => {
-    setIsPaymentModalOpen(true);
-  };
 
-  const handlePaymentSuccess = () => {
-    // Refresh credits after successful payment
-    fetch('/api/credits/balance')
-      .then(res => res.json())
-      .then(data => {
-        setCredits(data.currentCredits || 0);
-        setTotalCreditsEarned(data.totalCreditsEarned || 0);
-      });
-  };
-
-  const plans: Plan[] = [
-    {
-      id: 'pro',
-      name: 'Pro',
-      price: 25,
-      duration: 'per month',
-      tokensRequired: 25,
-      popular: true,
-      features: [
-        'Real-time signals',
-        'Full market coverage (50,000+ markets)',
-        'Email support',
-        'Basic analytics',
-        'API access (1,000 calls/month)',
-        'Historical data access (30 days)'
-      ]
-    },
-    {
-      id: 'premium',
-      name: 'Premium',
-      price: 60,
-      duration: 'per month',
-      tokensRequired: 60,
-      features: [
-        'Everything in Pro',
-        'Advanced analytics & predictions',
-        'Real-time market alerts',
-        'Priority support',
-        'API access (10,000 calls/month)',
-        'Historical data access (1 year)',
-        'Custom signal filters'
-      ]
-    }
-  ];
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -219,14 +117,6 @@ const Zigma = () => {
     return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`;
   };
 
-  const handlePurchase = async (planId: string) => {
-    const plan = plans.find(p => p.id === planId);
-    if (!plan) return;
-
-    // TODO: Implement token purchase logic
-    console.log('Purchasing plan:', plan);
-    setSelectedPlan(planId);
-  };
 
   return (
     <>
@@ -330,7 +220,7 @@ const Zigma = () => {
             <TabsTrigger value="overview">How It Works</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="platforms">Platforms</TabsTrigger>
-            <TabsTrigger value="plans">Pricing</TabsTrigger>
+            <TabsTrigger value="plans">Token Utility</TabsTrigger>
             <TabsTrigger value="basket">Auto Trading</TabsTrigger>
           </TabsList>
 
@@ -566,51 +456,48 @@ const Zigma = () => {
 
           <TabsContent value="plans" className="space-y-6">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-green-400">Pay-to-Chat Credits</h2>
-              <p className="text-gray-400 mt-2">Purchase credits to access AI chat predictions</p>
+              <h2 className="text-2xl font-bold text-green-400">ZIGMA Token Utility</h2>
+              <p className="text-gray-400 mt-2">Hold ZIGMA tokens to access AI chat predictions</p>
             </div>
 
-            {/* Credits Display */}
-            <CreditsDisplay
-              currentCredits={credits}
-              totalCreditsEarned={totalCreditsEarned}
-              creditsPerChat={1}
-              lastChatAt={null}
-            />
-
-            {/* Purchase Credits Button */}
+            {/* Token Requirements */}
             <Card className="bg-gradient-to-r from-green-900/20 to-blue-900/20 border-green-500/30">
-              <CardContent className="p-6 text-center">
+              <CardContent className="p-6">
                 <div className="flex items-center justify-center gap-3 mb-4">
                   <Coins className="w-8 h-8 text-green-400" />
-                  <div>
-                    <h3 className="text-xl font-bold text-white">Purchase Chat Credits</h3>
-                    <p className="text-sm text-gray-400">Pay $25 worth of ZIGMA tokens = 25 chat credits</p>
+                  <div className="text-center">
+                    <h3 className="text-xl font-bold text-white">Chat Access Requirements</h3>
+                    <p className="text-sm text-gray-400 mt-1">Hold ZIGMA tokens in your wallet to unlock chat</p>
                   </div>
                 </div>
-                <Button
-                  className="w-full max-w-md bg-green-600 hover:bg-green-700"
-                  onClick={handlePurchaseCredits}
-                >
-                  Buy 25 Credits ($25)
-                </Button>
-                <p className="text-xs text-gray-500 mt-2">
-                  1 credit per chat • Credits persist until used • No daily limit
-                </p>
+                <div className="bg-black/40 border border-green-500/20 rounded-lg p-4 mt-4">
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-green-400">10,000 ZIGMA</p>
+                    <p className="text-sm text-gray-400 mt-1">≈ $1.41 USD</p>
+                    <p className="text-lg text-white mt-2">= 3 Chat Conversations</p>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-gray-700">
+                    <ul className="text-sm text-gray-300 space-y-2">
+                      <li>✓ Automatic balance checking</li>
+                      <li>✓ No subscription required</li>
+                      <li>✓ Pay only for what you use</li>
+                      <li>✓ Full access to AI predictions</li>
+                    </ul>
+                  </div>
+                </div>
+                <div className="mt-4 text-center">
+                  <a
+                    href="https://phantom.com/tokens/solana/xT4tzTkuyXyDqCWeZyahrhnknPd8KBuuNjPngvqcyai?referralId=gkr7v4xfqno"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                  >
+                    <Wallet className="w-5 h-5" />
+                    Buy ZIGMA on Phantom
+                  </a>
+                </div>
               </CardContent>
             </Card>
-
-            {/* Payment Modal */}
-            {paymentConfig && (
-              <PaymentModal
-                isOpen={isPaymentModalOpen}
-                onClose={() => setIsPaymentModalOpen(false)}
-                walletAddress={paymentConfig.paymentWalletAddress}
-                requiredAmount={paymentConfig.requiredAmount}
-                creditsPerPayment={paymentConfig.creditsPerPayment}
-                onPaymentSuccess={handlePaymentSuccess}
-              />
-            )}
           </TabsContent>
 
           <TabsContent value="utility" className="space-y-6">

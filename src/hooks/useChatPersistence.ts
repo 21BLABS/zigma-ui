@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useMagicAuth } from '@/contexts/MagicAuthContext';
 import { db, UserChatHistory } from '@/lib/supabase';
 
 interface UseChatPersistenceOptions {
@@ -24,7 +24,7 @@ interface ChatPersistenceState {
 }
 
 export const useChatPersistence = (options: UseChatPersistenceOptions = {}) => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useMagicAuth();
   const [state, setState] = useState<ChatPersistenceState>({
     isSaving: false,
     lastSaved: null,

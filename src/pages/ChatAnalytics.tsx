@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useMagicAuth } from "@/contexts/MagicAuthContext";
 import { db, type ChatAnalytics, type ChatSummary } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +25,7 @@ import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
 
 const ChatAnalytics: React.FC = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useMagicAuth();
   const [summary, setSummary] = useState<ChatSummary | null>(null);
   const [analytics, setAnalytics] = useState<ChatAnalytics[]>([]);
   const [isLoading, setIsLoading] = useState(true);

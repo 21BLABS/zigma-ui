@@ -3,8 +3,8 @@ import { NavLink } from "@/components/NavLink";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/NotificationSystem";
-import UserProfile from "@/components/UserProfile";
-import { useAuth } from "@/contexts/AuthContext";
+import SimpleUserProfile from "@/components/SimpleUserProfile";
+import { useMagicAuth } from "@/contexts/MagicAuthContext";
 import { LogIn, ChevronDown, BookOpen, Settings } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,10 +31,10 @@ const docsLinks = [
 
 const SiteHeader = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user } = useMagicAuth();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-green-500/20 bg-black/80 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-green-500/20 bg-black/80 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 sm:px-6 py-4">
         <Link to="/" className="flex items-center gap-3 text-sm font-semibold tracking-[0.2em] text-green-400">
           <img src="/logonobg.jpeg" alt="Zigma Logo" className="h-8 w-auto" />
@@ -80,7 +80,7 @@ const SiteHeader = () => {
         <div className="flex items-center gap-3">
           <NotificationBell />
           {isAuthenticated && user ? (
-            <UserProfile />
+            <SimpleUserProfile />
           ) : (
             <Button
               asChild

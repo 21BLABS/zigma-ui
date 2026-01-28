@@ -5,10 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { NotificationProvider } from "@/components/NotificationSystem";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { FallbackAuthProvider } from "@/contexts/FallbackAuth";
+import { MagicAuthProvider } from "@/contexts/MagicAuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import Auth from "./components/Auth";
+import MagicAuth from "./components/MagicAuth";
 import Index from "./pages/Index";
 import Manifesto from "./pages/Manifesto";
 import Logs from "./pages/Logs";
@@ -56,7 +55,7 @@ const AppContent = () => {
   return (
     <Routes>
       <Route path="/" element={<Index />} />
-      <Route path="/auth" element={<Auth />} />
+      <Route path="/auth" element={<MagicAuth />} />
       <Route path="/manifesto" element={<Manifesto />} />
       <Route path="/docs" element={<Docs />} />
       <Route path="/terms-of-service" element={<TermsOfService />} />
@@ -114,19 +113,17 @@ const AppContent = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
-      <FallbackAuthProvider>
-        <AuthProvider>
-          <NotificationProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <AppContent />
-              </BrowserRouter>
-            </TooltipProvider>
-          </NotificationProvider>
-        </AuthProvider>
-      </FallbackAuthProvider>
+      <MagicAuthProvider>
+        <NotificationProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppContent />
+            </BrowserRouter>
+          </TooltipProvider>
+        </NotificationProvider>
+      </MagicAuthProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );
