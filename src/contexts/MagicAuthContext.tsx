@@ -67,11 +67,25 @@ export const MagicAuthProvider: React.FC<MagicAuthProviderProps> = ({ children }
   const checkUserSession = async () => {
     try {
       const isLoggedIn = await magic.user.isLoggedIn();
+      console.log('🔍 checkUserSession - isLoggedIn:', isLoggedIn);
       
       if (isLoggedIn) {
         const metadata = await (magic.user as any).getInfo();
-        // Get public address from metadata - it contains the wallet address
-        const publicAddress = metadata.publicAddress || '';
+        console.log('📋 checkUserSession - metadata:', metadata);
+        
+        // Get Solana wallet address using Solana extension
+        let publicAddress = '';
+        try {
+          console.log('🔑 Getting Solana wallet address...');
+          // Use getPublicAddress() to get Solana address (not Ethereum)
+          publicAddress = await (magic as any).solana.getPublicAddress();
+          console.log('✅ Solana wallet address:', publicAddress);
+        } catch (solanaError) {
+          console.error('❌ Failed to get Solana wallet:', solanaError);
+          console.error('Error details:', solanaError);
+        }
+        
+        console.log('💼 Final Solana publicAddress:', publicAddress);
         
         setUser({
           id: metadata.issuer || '',
@@ -83,9 +97,10 @@ export const MagicAuthProvider: React.FC<MagicAuthProviderProps> = ({ children }
           auth_provider: 'email',
         });
         setWalletAddress(publicAddress || null);
+        console.log('✅ User state updated with Solana wallet:', publicAddress);
       }
     } catch (error) {
-      console.error('Error checking user session:', error);
+      console.error('❌ Error checking user session:', error);
     } finally {
       setIsLoading(false);
     }
@@ -94,14 +109,31 @@ export const MagicAuthProvider: React.FC<MagicAuthProviderProps> = ({ children }
   const login = async (email: string) => {
     try {
       setIsLoading(true);
+      console.log('🔐 Starting Magic.link login for:', email);
       
       // Send magic link to email
+      console.log('📧 Sending OTP to email...');
       await (magic.auth as any).loginWithEmailOTP({ email });
+      console.log('✅ OTP sent successfully');
       
       // Get user metadata
+      console.log('👤 Fetching user metadata...');
       const metadata = await (magic.user as any).getInfo();
-      // Get public address from metadata - it contains the wallet address
-      const publicAddress = metadata.publicAddress || '';
+      console.log('📋 User metadata:', metadata);
+      
+      // Get Solana wallet address using Solana extension
+      let publicAddress = '';
+      try {
+        console.log('� Getting Solana wallet address...');
+        // Use getPublicAddress() to get Solana address (not Ethereum)
+        publicAddress = await (magic as any).solana.getPublicAddress();
+        console.log('✅ Solana wallet address:', publicAddress);
+      } catch (solanaError) {
+        console.error('❌ Failed to get Solana wallet:', solanaError);
+        console.error('Error details:', solanaError);
+      }
+      
+      console.log('💼 Final Solana wallet address:', publicAddress);
       
       setUser({
         id: metadata.issuer || '',
@@ -114,9 +146,10 @@ export const MagicAuthProvider: React.FC<MagicAuthProviderProps> = ({ children }
       });
       setWalletAddress(publicAddress || null);
       
-      console.log('Login successful:', { email, publicAddress });
+      console.log('✅ Login successful with Solana wallet:', { email, publicAddress, issuer: metadata.issuer });
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('❌ Login error:', error);
+      setIsLoading(false);
       throw error;
     } finally {
       setIsLoading(false);
@@ -140,21 +173,23 @@ export const MagicAuthProvider: React.FC<MagicAuthProviderProps> = ({ children }
 
   const refreshChatStatus = async () => {
     if (!walletAddress) {
+      console.log('🔍 [CHAT STATUS] No wallet address, setting chatStatus to null');
       setChatStatus(null);
       return;
     }
 
     try {
-      const status = await canUseChat(walletAddress);
+      console.log('🔍 [CHAT STATUS] Checking chat access for:', { 
+        walletAddress, 
+        email: user?.email,
+        hasEmail: !!user?.email 
+      });
+      const status = await canUseChat(walletAddress, user?.email);
+      console.log('✅ [CHAT STATUS] Result:', status);
       setChatStatus(status);
     } catch (error) {
-      console.error('Error refreshing chat status:', error);
-      setChatStatus({
-        canChat: false,
-        balance: 0,
-        availableChats: 0,
-        requiredZigma: 1000,
-      });
+      console.error('❌ [CHAT STATUS] Error refreshing chat status:', error);
+      setChatStatus(null);
     }
   };
 

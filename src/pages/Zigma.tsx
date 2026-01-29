@@ -485,6 +485,36 @@ const Zigma = () => {
                     </ul>
                   </div>
                 </div>
+
+                {/* How to Deposit ZIGMA */}
+                <div className="mt-6 bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
+                  <h4 className="text-lg font-bold text-yellow-400 mb-3 flex items-center gap-2">
+                    📥 How to Deposit ZIGMA for Chat Access
+                  </h4>
+                  <ol className="text-sm text-yellow-100 space-y-3 list-decimal list-inside">
+                    <li className="leading-relaxed">
+                      <strong>Login to ZIGMA</strong> - Sign in with your email to get your Solana wallet address
+                    </li>
+                    <li className="leading-relaxed">
+                      <strong>Copy Your Wallet Address</strong> - Click your profile icon (top right) and copy your Solana wallet address
+                    </li>
+                    <li className="leading-relaxed">
+                      <strong>Buy ZIGMA Tokens</strong> - Purchase ZIGMA on Phantom, Jupiter, or any Solana DEX
+                    </li>
+                    <li className="leading-relaxed">
+                      <strong>Send to Your ZIGMA Wallet</strong> - Transfer at least 10,000 ZIGMA tokens to the wallet address you copied
+                    </li>
+                    <li className="leading-relaxed">
+                      <strong>Start Chatting</strong> - Your balance updates automatically. Go to Chat page and start using AI predictions!
+                    </li>
+                  </ol>
+                  <div className="mt-4 pt-3 border-t border-yellow-500/20">
+                    <p className="text-xs text-yellow-200/80">
+                      💡 <strong>Tip:</strong> Your ZIGMA wallet is created automatically when you sign up. No need to connect external wallets!
+                    </p>
+                  </div>
+                </div>
+
                 <div className="mt-4 text-center">
                   <a
                     href="https://phantom.com/tokens/solana/xT4tzTkuyXyDqCWeZyahrhnknPd8KBuuNjPngvqcyai?referralId=gkr7v4xfqno"

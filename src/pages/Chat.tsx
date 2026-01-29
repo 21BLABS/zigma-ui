@@ -13,12 +13,18 @@ import { PaymentModal } from '@/components/PaymentModal';
 import { useMagicAuth } from '@/contexts/MagicAuthContext';
 import { useChatPersistence } from '@/hooks/useChatPersistence';
 import { db } from '@/lib/supabase';
+import { magic } from '../lib/magic';
+import { SmartAnalysisCard } from '@/components/SmartAnalysisCard';
+import { UserProfileCard } from '@/components/UserProfileCard';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
   recommendation?: any;
+  market?: any;
+  analysis?: any;
+  userProfile?: any;
 }
 
 interface ChatResponse {
@@ -27,6 +33,8 @@ interface ChatResponse {
   sources?: string[];
   recommendation?: any;
   userProfile?: any;
+  market?: any;
+  analysis?: any;
 }
 
 const SUGGESTED_QUERIES = [
@@ -59,11 +67,18 @@ const Chat = () => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Hooks
-  const { user, isAuthenticated, chatStatus } = useMagicAuth();
+  const { user, isAuthenticated, chatStatus, refreshChatStatus } = useMagicAuth();
   const chatPersistence = useChatPersistence({
-    autoSave: true,
-    enableAnalytics: true
+    autoSave: false, // Disabled due to Magic DID format incompatibility with UUID
+    enableAnalytics: false
   });
+
+  // Debug logging for chat status
+  useEffect(() => {
+    console.log('💬 Chat Status:', chatStatus);
+    console.log('👤 User:', user);
+    console.log('🔐 Is Authenticated:', isAuthenticated);
+  }, [chatStatus, user, isAuthenticated]);
 
   // Load saved data from localStorage
   useEffect(() => {
@@ -141,16 +156,31 @@ const Chat = () => {
     entry.query.toLowerCase().includes(historySearchQuery.toLowerCase())
   );
 
-  const canSubmit = input.trim().length > 0 && !isLoading;
+  // Allow submission if either main input OR advanced options are filled
+  const canSubmit = (input.trim().length > 0 || polymarketUser.trim().length > 0 || marketId.trim().length > 0) && !isLoading;
+  
+  // Debug logging for button state
+  useEffect(() => {
+    console.log('🔍 [BUTTON STATE]', {
+      canSubmit,
+      inputLength: input.trim().length,
+      isLoading,
+      chatStatus,
+      buttonDisabled: !canSubmit || (chatStatus && !chatStatus.canChat)
+    });
+  }, [canSubmit, input, isLoading, chatStatus]);
 
   // Handlers
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
 
+    // Use polymarketUser as message if main input is empty (for user analysis)
+    const messageContent = input.trim() || (polymarketUser.trim() ? `Analyze user: ${polymarketUser.trim()}` : `Analyze market: ${marketId.trim()}`);
+    
     const userMessage: ChatMessage = {
       role: 'user',
-      content: input.trim(),
+      content: messageContent,
       timestamp: new Date().toISOString()
     };
 
@@ -161,35 +191,63 @@ const Chat = () => {
 
     // Add to query history
     const newHistoryEntry = {
-      query: input.trim(),
+      query: messageContent,
       timestamp: new Date().toISOString()
     };
     setQueryHistory(prev => [newHistoryEntry, ...prev.slice(0, 49)]); // Keep last 50
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/chat`, {
+      // Get Magic DID token for authentication
+      console.log('🔐 Getting Magic DID token...');
+      console.log('Magic instance available:', !!magic);
+      
+      const didToken = await magic.user.getIdToken();
+      console.log('🎫 DID Token retrieved:', didToken ? 'YES (length: ' + didToken.length + ')' : 'NO - Token is null/undefined');
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      // Add auth token if available
+      if (didToken) {
+        headers['Authorization'] = `Bearer ${didToken}`;
+        console.log('✅ Authorization header added');
+      } else {
+        console.warn('⚠️ No DID token - request will fail with 401');
+      }
+      
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/chat/message`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
-          query: input.trim(),
+          message: messageContent,
           userId: user?.id,
-          walletAddress: user?.wallet_address
+          walletAddress: user?.wallet_address,
+          // Include advanced options for user analysis and market lookup
+          polymarketUser: polymarketUser.trim() || undefined,
+          marketId: marketId.trim() || undefined
         })
       });
 
+      console.log('📡 Chat API Response Status:', response.status, response.statusText);
+      
       if (!response.ok) {
-        throw new Error('Failed to get response');
+        const errorText = await response.text();
+        console.error('❌ Chat API Error Response:', errorText);
+        throw new Error(`API Error ${response.status}: ${errorText}`);
       }
 
       const data: ChatResponse = await response.json();
+      console.log('✅ Chat API Success:', data);
 
       const assistantMessage: ChatMessage = {
         role: 'assistant',
         content: data.answer,
         timestamp: new Date().toISOString(),
-        recommendation: data.recommendation
+        recommendation: data.recommendation,
+        market: data.market,
+        analysis: data.analysis,
+        userProfile: data.userProfile
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -306,28 +364,36 @@ const Chat = () => {
                 <span className="text-white font-bold">!</span>
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-red-300 mb-2">Credits Required</h3>
+                <h3 className="text-lg font-semibold text-red-300 mb-2">ZIGMA Tokens Required</h3>
                 <p className="text-red-200 mb-4">
-                  You need chat credits to access the AI predictions. Purchase credits to continue.
+                  You need 10,000 ZIGMA tokens in your wallet to access chat. Current balance: {chatStatus.balance.toLocaleString()} ZIGMA
                 </p>
                 <div className="space-y-3">
-                  <div className="bg-black/40 border border-red-500/20 rounded-lg p-4">
-                    <h4 className="text-green-400 font-semibold mb-2">Credit Information</h4>
-                    <ul className="text-sm text-red-300 space-y-1">
-                      <li>✓ 1 credit per chat message</li>
-                      <li>✓ Credits persist until used</li>
-                      <li>✓ No daily limit</li>
-                      <li>✓ Full access to AI predictions</li>
-                    </ul>
+                  <div className="bg-black/40 border border-yellow-500/20 rounded-lg p-4">
+                    <h4 className="text-yellow-400 font-semibold mb-2">📥 How to Add ZIGMA:</h4>
+                    <ol className="text-sm text-yellow-200 space-y-1 list-decimal list-inside">
+                      <li>Click your profile icon (top right) and copy your Solana wallet address</li>
+                      <li>Buy ZIGMA on Phantom or Jupiter</li>
+                      <li>Send 10,000 ZIGMA to your wallet address</li>
+                      <li>Click "Refresh Balance" below</li>
+                    </ol>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-3 mt-4">
                   <button 
-                    onClick={() => setIsPaymentModalOpen(true)}
+                    onClick={() => refreshChatStatus()}
                     className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-black px-4 py-2 rounded-md text-sm font-medium transition-colors"
                   >
-                    Purchase Credits
+                    🔄 Refresh Balance
                   </button>
+                  <a
+                    href="https://phantom.com/tokens/solana/xT4tzTkuyXyDqCWeZyahrhnknPd8KBuuNjPngvqcyai?referralId=gkr7v4xfqno"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                  >
+                    Buy ZIGMA on Phantom
+                  </a>
                 </div>
               </div>
             </div>
@@ -386,7 +452,13 @@ const Chat = () => {
               <Textarea
                 ref={inputRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => {
+                  console.log('📝 [INPUT CHANGE]', { value: e.target.value, length: e.target.value.length });
+                  setInput(e.target.value);
+                }}
+                onPaste={(e) => {
+                  console.log('📋 [PASTE EVENT]', { clipboardData: e.clipboardData.getData('text') });
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -486,25 +558,40 @@ const Chat = () => {
               {[...messages].reverse().map((message, index) => {
                 const isUser = message.role === "user";
                 return (
-                  <div key={`${message.role}-${index}`} className={cn("rounded-lg p-4 border space-y-2", isUser ? "bg-green-600/10 border-green-500/20 ml-auto max-w-xl" : "bg-black/40 border-green-500/10 mr-auto max-w-2xl")}>
-                    <div className="text-xs uppercase tracking-[0.2em] text-green-400/80">{isUser ? "You" : "Agent Zigma"}</div>
-                    <div className="whitespace-pre-wrap leading-relaxed">
-                      {editingMessageIndex === index ? (
-                        <div className="space-y-2">
-                          <Textarea value={editingContent} onChange={(e) => setEditingContent(e.target.value)} className="bg-black/60 border-green-500/30 text-green-100" rows={4} />
-                          <div className="flex gap-2">
-                            <button type="button" onClick={handleSaveEdit} className="text-xs bg-green-600 text-black px-3 py-1 rounded">Save</button>
-                            <button type="button" onClick={handleCancelEdit} className="text-xs bg-gray-700 text-white px-3 py-1 rounded">Cancel</button>
-                          </div>
-                        </div>
-                      ) : message.content}
-                    </div>
-                    {!isUser && renderRecommendation(message.recommendation)}
-                    {!isUser && (
-                      <div className="flex items-center gap-3 mt-3 pt-3 border-t border-green-500/10">
-                        <button type="button" onClick={() => handleCopyToClipboard(message.content)} className="text-xs text-green-400/80 hover:text-green-400">📋 Copy</button>
-                        <button type="button" onClick={() => handleEditMessage(index)} className="text-xs text-green-400/80 hover:text-green-400">✏️ Edit</button>
-                        <button type="button" onClick={() => handleDeleteMessage(index)} className="text-xs text-red-400/80 hover:text-red-400">🗑️ Delete</button>
+                  <div key={`${message.role}-${index}`} className={cn(isUser ? "ml-auto max-w-xl" : "mr-auto max-w-full")}>
+                    {isUser ? (
+                      <div className="rounded-lg p-4 border bg-green-600/10 border-green-500/20">
+                        <div className="text-xs uppercase tracking-[0.2em] text-green-400/80 mb-2">You</div>
+                        <div className="text-green-100">{message.content}</div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.2em] text-green-400/80 mb-3">Agent Zigma</div>
+                        {message.userProfile ? (
+                          // Premium User Profile Display
+                          <UserProfileCard 
+                            userProfile={message.userProfile}
+                            content={message.content}
+                          />
+                        ) : (
+                          // Market Analysis Display
+                          <SmartAnalysisCard
+                            content={message.content}
+                            recommendation={message.recommendation}
+                            market={message.market}
+                            onSave={() => console.log('Save analysis')}
+                            onTrack={() => console.log('Track market')}
+                            onAlert={() => console.log('Set alert')}
+                            onShare={() => console.log('Share analysis')}
+                            onRefresh={() => {
+                              // Re-submit the original query
+                              const originalQuery = messages[messages.length - index - 1]?.content;
+                              if (originalQuery) {
+                                setInput(originalQuery);
+                              }
+                            }}
+                          />
+                        )}
                       </div>
                     )}
                   </div>

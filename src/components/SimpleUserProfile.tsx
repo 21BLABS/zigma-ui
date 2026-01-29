@@ -3,15 +3,22 @@ import { useMagicAuth } from '@/contexts/MagicAuthContext';
 import { LogOut, Copy, Check } from 'lucide-react';
 
 const SimpleUserProfile = () => {
-  const { user, logout, isAuthenticated, chatStatus } = useMagicAuth();
+  const { user, logout, isAuthenticated, chatStatus, walletAddress } = useMagicAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
   console.log('SimpleUserProfile - user:', user);
+  console.log('SimpleUserProfile - walletAddress from context:', walletAddress);
+  console.log('SimpleUserProfile - user.wallet_address:', user?.wallet_address);
+  console.log('SimpleUserProfile - user.publicAddress:', user?.publicAddress);
+  console.log('SimpleUserProfile - chatStatus:', chatStatus);
 
   if (!isAuthenticated || !user) {
     return null;
   }
+
+  // Use walletAddress from context as primary source
+  const displayWallet = walletAddress || user.wallet_address || user.publicAddress;
 
   const getInitials = (name: string) => {
     return name
@@ -23,8 +30,8 @@ const SimpleUserProfile = () => {
   };
 
   const handleCopy = () => {
-    if (user.wallet_address) {
-      navigator.clipboard.writeText(user.wallet_address);
+    if (displayWallet) {
+      navigator.clipboard.writeText(displayWallet);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -64,7 +71,7 @@ const SimpleUserProfile = () => {
               <div className="bg-gray-900 rounded p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-gray-400">Solana Wallet</p>
-                  {user.wallet_address && (
+                  {displayWallet && (
                     <button
                       onClick={handleCopy}
                       className="text-xs text-green-400 hover:text-green-300 flex items-center gap-1"
@@ -84,19 +91,37 @@ const SimpleUserProfile = () => {
                   )}
                 </div>
                 <p className="text-xs text-green-200 font-mono break-all">
-                  {user.wallet_address || user.publicAddress || 'Loading wallet...'}
+                  {displayWallet || 'Loading wallet...'}
                 </p>
+                {displayWallet && (
+                  <p className="text-xs text-yellow-400 mt-2">
+                    💡 Send ZIGMA tokens to this address to use chat
+                  </p>
+                )}
               </div>
 
               {/* ZIGMA Balance */}
               {chatStatus ? (
-                <div className="bg-purple-900/30 border border-purple-500/30 rounded p-3">
-                  <p className="text-sm font-semibold text-purple-300">
-                    {chatStatus.balance.toLocaleString()} ZIGMA
-                  </p>
-                  <p className="text-xs text-purple-200/70">
-                    {chatStatus.availableChats} chats available
-                  </p>
+                <div className="bg-purple-900/30 border border-purple-500/30 rounded p-3 space-y-2">
+                  <div>
+                    <p className="text-sm font-semibold text-purple-300">
+                      {chatStatus.balance.toLocaleString()} ZIGMA
+                    </p>
+                    <p className="text-xs text-purple-200/70">
+                      {chatStatus.availableChats} chats available
+                    </p>
+                  </div>
+                  {chatStatus.balance === 0 && (
+                    <div className="text-xs text-yellow-300 bg-yellow-900/20 border border-yellow-500/30 rounded p-2">
+                      <p className="font-semibold mb-1">📥 How to add ZIGMA:</p>
+                      <ol className="list-decimal list-inside space-y-1 text-yellow-200/90">
+                        <li>Copy your wallet address above</li>
+                        <li>Buy ZIGMA on Phantom or Jupiter</li>
+                        <li>Send 10,000 ZIGMA to this address</li>
+                        <li>Get 3 chats (~$1.41)</li>
+                      </ol>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="bg-gray-900 rounded p-3">
