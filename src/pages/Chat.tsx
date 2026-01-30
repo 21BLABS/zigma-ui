@@ -59,7 +59,7 @@ const Chat = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [marketId, setMarketId] = useState("");
   const [polymarketUser, setPolymarketUser] = useState("");
-  const [chatUsage, setChatUsage] = useState<{ canUse: boolean; remainingUses: number; resetAt: string | null }>({ canUse: true, remainingUses: 15, resetAt: null });
+  const [chatUsage, setChatUsage] = useState<{ canUse: boolean; remainingUses: number; resetAt: string | null; freeChatsRemaining?: number }>({ canUse: true, remainingUses: 15, resetAt: null });
   const [isLoadingUsage, setIsLoadingUsage] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentConfig, setPaymentConfig] = useState(null);
@@ -135,14 +135,14 @@ const Chat = () => {
       
       setIsLoadingUsage(true);
       try {
-        // Use email as fallback for wallet_address if it's null (for email users)
-        const userIdentifier = user.wallet_address || user.email;
-        const usage = await db.getCreditBalance(user.id);
+        // Use wallet_address if available, otherwise fall back to user.id
+        const userIdentifier = user.wallet_address || user.id;
+        const usage = await db.getCreditBalance(userIdentifier);
         setChatUsage(usage);
       } catch (error) {
         console.error('Failed to check credit balance:', error);
         // Default to allowing usage if check fails
-        setChatUsage({ canUse: true, remainingUses: 0, resetAt: null });
+        setChatUsage({ canUse: true, remainingUses: 0, resetAt: null, freeChatsRemaining: 0 });
       } finally {
         setIsLoadingUsage(false);
       }
@@ -356,17 +356,42 @@ const Chat = () => {
           </p>
         </header>
 
+        {/* Free Trial Banner */}
+        {isAuthenticated && chatStatus && chatStatus.canChat && chatStatus.usingFreeTrial && (
+          <div className="mb-8 bg-green-900/20 border border-green-500/30 rounded-xl p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-bold">🎁</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-green-300 mb-2">Free Trial Active</h3>
+                <p className="text-green-200 mb-2">
+                  You have {chatStatus.freeChatsRemaining} free chats remaining!
+                </p>
+                <p className="text-sm text-green-300/80">
+                  After your free trial, you'll need ZIGMA tokens to continue. Get them early to unlock unlimited access.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Credit Access Restriction */}
-        {isAuthenticated && chatStatus && !chatStatus.canChat && (
+        {isAuthenticated && chatStatus && !chatStatus.canChat && !chatStatus.usingFreeTrial && (
           <div className="mb-8 bg-red-900/20 border border-red-500/30 rounded-xl p-6">
             <div className="flex items-start gap-4">
               <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-white font-bold">!</span>
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-red-300 mb-2">ZIGMA Tokens Required</h3>
+                <h3 className="text-lg font-semibold text-red-300 mb-2">
+                  {chatStatus.freeChatsRemaining === 0 ? 'Free Trial Complete' : 'ZIGMA Tokens Required'}
+                </h3>
                 <p className="text-red-200 mb-4">
-                  You need 10,000 ZIGMA tokens in your wallet to access chat. Current balance: {chatStatus.balance.toLocaleString()} ZIGMA
+                  {chatStatus.freeChatsRemaining === 0 
+                    ? "Your free trial is over. You need ZIGMA tokens to continue chatting."
+                    : `You need 10,000 ZIGMA tokens in your wallet to access chat. Current balance: ${chatStatus.balance.toLocaleString()} ZIGMA`
+                  }
                 </p>
                 <div className="space-y-3">
                   <div className="bg-black/40 border border-yellow-500/20 rounded-lg p-4">

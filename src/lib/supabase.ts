@@ -494,20 +494,21 @@ export const db = {
   // Credit balance functions (replaces old chat usage tracking)
   async getCreditBalance(userId: string) {
     try {
-      const response = await fetch('/api/credits/balance?userId=' + userId);
+      const response = await fetch('/api/credits/balance?userId=' + encodeURIComponent(userId));
       if (!response.ok) {
         console.error('Failed to fetch credit balance:', response.statusText);
-        return { canUse: false, remainingUses: 0, resetAt: null };
+        return { canUse: false, remainingUses: 0, resetAt: null, freeChatsRemaining: 0 };
       }
       const data = await response.json();
       return {
-        canUse: data.currentCredits > 0,
+        canUse: data.currentCredits > 0 || data.freeChatsRemaining > 0,
         remainingUses: data.currentCredits,
+        freeChatsRemaining: data.freeChatsRemaining || 0,
         resetAt: null
       };
     } catch (error) {
       console.error('Error fetching credit balance:', error);
-      return { canUse: false, remainingUses: 0, resetAt: null };
+      return { canUse: false, remainingUses: 0, resetAt: null, freeChatsRemaining: 0 };
     }
   },
 

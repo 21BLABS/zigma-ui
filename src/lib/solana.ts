@@ -85,13 +85,15 @@ export function calculateAvailableChats(zigmaBalance: number): number {
 }
 
 /**
- * Check if user can use chat based on ZIGMA balance
+ * Check if user can use chat based on free trial OR ZIGMA balance
  */
 export async function canUseChat(walletAddress: string, userEmail?: string): Promise<{
   canChat: boolean;
   balance: number;
   availableChats: number;
   requiredZigma: number;
+  freeChatsRemaining?: number;
+  usingFreeTrial?: boolean;
 }> {
   // DEV EXCEPTION: Allow unlimited chat for dev/test accounts
   const DEV_EMAILS = ['neohex262@gmail.com', 'jissjoseph30@gmail.com'];
@@ -102,9 +104,47 @@ export async function canUseChat(walletAddress: string, userEmail?: string): Pro
       balance: 999999,
       availableChats: 999,
       requiredZigma: 0,
+      freeChatsRemaining: 999,
+      usingFreeTrial: false,
     };
   }
   
+  // FIRST: Check backend for free trial credits (email-based users)
+  if (userEmail) {
+    try {
+      console.log('🎁 Checking free trial status for email user:', userEmail);
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      
+      // Get user ID from email (we need to query backend)
+      // For now, we'll use email as identifier and let backend handle it
+      const response = await fetch(`${apiBaseUrl}/api/credits/balance?userId=${encodeURIComponent(userEmail)}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('📊 Free trial data:', data);
+        
+        // If user has free chats remaining, allow chat
+        if (data.freeChatsRemaining && data.freeChatsRemaining > 0) {
+          console.log(`✅ User has ${data.freeChatsRemaining} free chats remaining`);
+          return {
+            canChat: true,
+            balance: 0,
+            availableChats: data.freeChatsRemaining,
+            requiredZigma: 0,
+            freeChatsRemaining: data.freeChatsRemaining,
+            usingFreeTrial: true,
+          };
+        }
+        
+        console.log('⚠️ Free trial exhausted, checking ZIGMA tokens...');
+      }
+    } catch (error) {
+      console.error('❌ Error checking free trial:', error);
+      // Continue to token check if free trial check fails
+    }
+  }
+  
+  // SECOND: Check ZIGMA token balance (wallet-based users or after free trial)
   const balance = await getZigmaBalance(walletAddress);
   const availableChats = calculateAvailableChats(balance);
   
@@ -113,6 +153,8 @@ export async function canUseChat(walletAddress: string, userEmail?: string): Pro
     balance,
     availableChats,
     requiredZigma: CHAT_CONFIG.ZIGMA_PER_PACKAGE,
+    freeChatsRemaining: 0,
+    usingFreeTrial: false,
   };
 }
 

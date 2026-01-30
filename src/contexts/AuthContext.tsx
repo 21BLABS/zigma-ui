@@ -379,16 +379,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const checkTokenStatus = async () => {
-    if (!user || !user.id) {
+    if (!user) {
       console.log('checkTokenStatus: No user found');
       return;
     }
 
-    console.log(`checkTokenStatus: Checking credits for user: ${user.id}`);
+    // Use wallet_address if available, otherwise fall back to user.id
+    const userIdentifier = user.wallet_address || user.id;
+    
+    if (!userIdentifier) {
+      console.log('checkTokenStatus: No user identifier found');
+      return;
+    }
+
+    console.log(`checkTokenStatus: Checking credits for user: ${userIdentifier}`);
     
     try {
       // Use the new credit API to check user's credit balance
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/credits/balance?userId=${user.id}`);
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/credits/balance?userId=${encodeURIComponent(userIdentifier)}`);
       
       if (!response.ok) {
         console.error('Failed to fetch credit balance:', response.statusText);
@@ -397,16 +405,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const data = await response.json();
       
-      console.log(`Credit check result: currentCredits=${data.currentCredits}, totalEarned=${data.totalCreditsEarned}`);
+      console.log(`Credit check result: currentCredits=${data.currentCredits}, freeChats=${data.freeChatsRemaining}, totalEarned=${data.totalCreditsEarned}`);
       
       setTokenStatus({
-        hasTokens: data.currentCredits > 0,
+        hasTokens: data.currentCredits > 0 || data.freeChatsRemaining > 0,
         balance: data.currentCredits,
         requiresToken: true,
         lastChecked: new Date().toISOString()
       });
       
-      setHasTokenAccess(data.currentCredits > 0);
+      setHasTokenAccess(data.currentCredits > 0 || data.freeChatsRemaining > 0);
     } catch (error) {
       console.error('Error checking credit status:', error);
       setTokenStatus({

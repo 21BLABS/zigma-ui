@@ -19,6 +19,8 @@ interface ChatStatus {
   balance: number;
   availableChats: number;
   requiredZigma: number;
+  freeChatsRemaining?: number;
+  usingFreeTrial?: boolean;
 }
 
 interface MagicAuthContextType {
