@@ -39,7 +39,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
     try {
       // Check payment status via Helius webhook
-      const response = await fetch(`http://localhost:3001/api/helius/payment-status/${walletAddress}`);
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiBaseUrl}/api/helius/payment-status/${walletAddress}`);
       const data = await response.json();
       
       if (data.success && data.hasRecentPayment) {
