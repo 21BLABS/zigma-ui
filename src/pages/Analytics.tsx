@@ -195,6 +195,18 @@ const Analytics = () => {
     enabled: !!apiBaseUrl,
   });
 
+  // Fetch current cycle data for live metrics
+  const { data: currentCycleData } = useQuery({
+    queryKey: ["current-cycle-data"],
+    queryFn: async () => {
+      const res = await fetch(`${apiBaseUrl}/data`);
+      if (!res.ok) throw new Error("Failed to fetch current cycle data");
+      return res.json();
+    },
+    refetchInterval: 30000,
+    enabled: !!apiBaseUrl,
+  });
+
 
   const { data: accuracyMetrics, isLoading: accuracyLoading, error: accuracyError } = useQuery<AccuracyMetrics>({
     queryKey: ["accuracy-metrics"],
@@ -776,7 +788,7 @@ const Analytics = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-green-400">
-                  {performanceHistory?.data?.[performanceHistory.data.length - 1]?.marketsAnalyzed || 0}
+                  {currentCycleData?.cycleSummary?.marketsAnalyzed || currentCycleData?.marketsMonitored || 0}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Markets processed
