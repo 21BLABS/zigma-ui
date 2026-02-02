@@ -12,6 +12,7 @@ import { ConfidenceInterval } from '@/components/visualizations/ConfidenceInterv
 import { NewsSentimentTimeline } from '@/components/visualizations/NewsSentimentTimeline';
 import { FactorContributionChart } from '@/components/visualizations/FactorContributionChart';
 import { SmartRecommendationPanel } from '@/components/trading/SmartRecommendationPanel';
+import { MultiOutcomeMarketGrid } from '@/components/MultiOutcomeMarketGrid';
 
 interface AnalysisSection {
   title: string;
@@ -34,6 +35,16 @@ interface SmartAnalysisCardProps {
     question?: string;
     url?: string;
   };
+  allMarkets?: Array<{
+    id: string;
+    question: string;
+    yesPrice: number;
+    noPrice: number;
+    liquidity: number;
+    volume24hr: number;
+    url: string;
+  }>;
+  isMultiOutcome?: boolean;
   onSave?: () => void;
   onTrack?: () => void;
   onAlert?: () => void;
@@ -45,6 +56,8 @@ export const SmartAnalysisCard: React.FC<SmartAnalysisCardProps> = ({
   content,
   recommendation,
   market,
+  allMarkets,
+  isMultiOutcome,
   onSave,
   onTrack,
   onAlert,
@@ -329,6 +342,17 @@ export const SmartAnalysisCard: React.FC<SmartAnalysisCardProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Multi-Outcome Market Grid - Show all outcomes if this is a multi-outcome event */}
+      {isMultiOutcome && allMarkets && allMarkets.length > 0 && (
+        <MultiOutcomeMarketGrid
+          markets={allMarkets}
+          onSelectMarket={(selectedMarket) => {
+            // Open the specific market URL in a new tab
+            window.open(selectedMarket.url, '_blank');
+          }}
+        />
+      )}
+
       {/* Header with Key Metrics */}
       <Card className="bg-gradient-to-br from-green-900/20 to-black border-green-500/30 relative">
         <CardContent className="p-6">

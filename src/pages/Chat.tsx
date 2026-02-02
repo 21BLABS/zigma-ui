@@ -25,6 +25,8 @@ interface ChatMessage {
   market?: any;
   analysis?: any;
   userProfile?: any;
+  allMarkets?: any[]; // Multi-outcome events (e.g., Bitcoin price ranges)
+  isMultiOutcome?: boolean;
 }
 
 interface ChatResponse {
@@ -35,6 +37,8 @@ interface ChatResponse {
   userProfile?: any;
   market?: any;
   analysis?: any;
+  allMarkets?: any[]; // Multi-outcome events
+  isMultiOutcome?: boolean;
 }
 
 const SUGGESTED_QUERIES = [
@@ -247,7 +251,9 @@ const Chat = () => {
         recommendation: data.recommendation,
         market: data.market,
         analysis: data.analysis,
-        userProfile: data.userProfile
+        userProfile: data.userProfile,
+        allMarkets: data.allMarkets,
+        isMultiOutcome: data.isMultiOutcome
       };
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -604,6 +610,8 @@ const Chat = () => {
                             content={message.content}
                             recommendation={message.recommendation}
                             market={message.market}
+                            allMarkets={message.allMarkets}
+                            isMultiOutcome={message.isMultiOutcome}
                             onSave={() => console.log('Save analysis')}
                             onTrack={() => console.log('Track market')}
                             onAlert={() => console.log('Set alert')}
