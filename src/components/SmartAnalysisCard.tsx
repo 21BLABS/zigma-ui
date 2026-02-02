@@ -65,6 +65,17 @@ export const SmartAnalysisCard: React.FC<SmartAnalysisCardProps> = ({
   onRefresh
 }) => {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['market', 'recommendation']));
+  
+  // Debug logging for multi-outcome
+  React.useEffect(() => {
+    if (isMultiOutcome || allMarkets) {
+      console.log('📊 SmartAnalysisCard multi-outcome props:', {
+        isMultiOutcome,
+        allMarketsCount: allMarkets?.length || 0,
+        marketQuestion: market?.question
+      });
+    }
+  }, [isMultiOutcome, allMarkets, market]);
   const [copiedToast, setCopiedToast] = useState(false);
   const [actionToast, setActionToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [isLoading, setIsLoading] = useState<{[key: string]: boolean}>({});

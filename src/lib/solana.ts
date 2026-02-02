@@ -113,7 +113,7 @@ export async function canUseChat(walletAddress: string, userEmail?: string): Pro
   if (userEmail) {
     try {
       console.log('🎁 Checking free trial status for email user:', userEmail);
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.zigma.pro';
       
       // Get user ID from email (we need to query backend)
       // For now, we'll use email as identifier and let backend handle it

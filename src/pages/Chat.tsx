@@ -220,7 +220,7 @@ const Chat = () => {
         console.warn('⚠️ No DID token - request will fail with 401');
       }
       
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/chat/message`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'https://api.zigma.pro'}/api/chat/message`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -243,6 +243,11 @@ const Chat = () => {
 
       const data: ChatResponse = await response.json();
       console.log('✅ Chat API Success:', data);
+      console.log('🔍 Multi-outcome check:', {
+        isMultiOutcome: data.isMultiOutcome,
+        allMarketsCount: data.allMarkets?.length || 0,
+        allMarketsPreview: data.allMarkets?.slice(0, 3).map(m => m.question)
+      });
 
       const assistantMessage: ChatMessage = {
         role: 'assistant',

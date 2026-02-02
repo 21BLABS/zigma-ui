@@ -396,7 +396,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     try {
       // Use the new credit API to check user's credit balance
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/credits/balance?userId=${encodeURIComponent(userIdentifier)}`);
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'https://api.zigma.pro'}/api/credits/balance?userId=${encodeURIComponent(userIdentifier)}`);
       
       if (!response.ok) {
         console.error('Failed to fetch credit balance:', response.statusText);
@@ -430,7 +430,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const verifyWalletTokens = async (walletAddress: string) => {
     try {
       // Use the new credit API to check wallet credits
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/credits/balance`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'https://api.zigma.pro'}/api/credits/balance`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'

@@ -39,7 +39,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
     try {
       // Check payment status via Helius webhook
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.zigma.pro';
       const response = await fetch(`${apiBaseUrl}/api/helius/payment-status/${walletAddress}`);
       const data = await response.json();
       

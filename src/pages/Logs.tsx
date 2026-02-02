@@ -12,7 +12,7 @@ const Logs = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://api.zigma.pro";
 
   useEffect(() => {
     let isMounted = true;

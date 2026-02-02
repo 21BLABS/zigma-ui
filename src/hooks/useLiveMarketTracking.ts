@@ -45,7 +45,7 @@ export const useLiveMarketTracking = ({
 
     const connect = () => {
       try {
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.zigma.pro';
         const wsUrl = apiBaseUrl.replace(/^http/, 'ws') + '/ws/market-tracking';
         const ws = new WebSocket(wsUrl);
         wsRef.current = ws;

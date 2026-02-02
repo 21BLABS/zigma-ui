@@ -90,7 +90,7 @@ const SignalPerformance = () => {
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   useEffect(() => {
-    setApiBaseUrl(import.meta.env.VITE_API_BASE_URL || "http://localhost:3001");
+    setApiBaseUrl(import.meta.env.VITE_API_BASE_URL || "https://api.zigma.pro");
   }, []);
 
   const { data: signalPerf, isLoading: perfLoading, error: perfError } = useQuery<SignalPerformance>({
