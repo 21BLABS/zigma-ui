@@ -742,7 +742,7 @@ const Index = () => {
                     </div>
                   </div>
                   <div className="mt-2 pt-2 border-t border-green-500/20">
-                    <div className="text-xs text-green-300">✅ Politics: 100% Accuracy (1/1 resolved)</div>
+                    <div className="text-xs text-gray-400">Latest Cycle: {liveStatus.marketsScanned || 1008} Scanned → {liveStatus.marketsQualified || 32} Qualified → {liveStatus.posts || 27} Deep Analysis → {liveSignals.length || 10} Executable</div>
                   </div>
                 </div>
 
@@ -888,7 +888,7 @@ const Index = () => {
                         </Link>
                       </div>
                     )}
-                    <p className="text-xs text-muted-foreground mt-4">*Signals indicate divergence from baseline expectations, not true mispricing.</p>
+                    <p className="text-xs text-muted-foreground mt-4">*Signals represent AI-detected probability divergence. Past performance doesn't guarantee future results. Not financial advice.</p>
               </>
             ) : (
               <>

@@ -610,11 +610,11 @@ const Analytics = () => {
                   goodThreshold={1}
                 />
               </MetricTooltip>
-              <MetricTooltip content="Sortino Ratio is similar to Sharpe but only considers downside risk. Better for strategies with asymmetric returns. Focuses on negative volatility only.">
+              <MetricTooltip content="Sortino Ratio is similar to Sharpe but only considers downside risk. Better for strategies with asymmetric returns. Focuses on negative volatility only. EARLY STAGE: Based on limited sample size. This metric requires 30+ resolved signals for statistical reliability.">
                 <MetricCard
                   title="Sortino Ratio"
                   value={riskMetrics?.sortinoRatio || 0}
-                  description="Downside risk-adjusted return"
+                  description="⚠️ Early sample - unreliable"
                   goodThreshold={1}
                 />
               </MetricTooltip>
@@ -645,11 +645,11 @@ const Analytics = () => {
                   goodThreshold={-15}
                 />
               </MetricTooltip>
-              <MetricTooltip content="Calmar Ratio measures return per unit of maximum drawdown risk. Higher is better. Calculated as Annual Return / Max Drawdown.">
+              <MetricTooltip content="Calmar Ratio measures return per unit of maximum drawdown risk. Higher is better. Calculated as Annual Return / Max Drawdown. EARLY STAGE: Requires 30+ resolved signals for meaningful calculation.">
                 <MetricCard
                   title="Calmar Ratio"
                   value={riskMetrics?.calmarRatio || 0}
-                  description="Return / Max Drawdown"
+                  description="⚠️ Early sample - unreliable"
                   goodThreshold={1}
                 />
               </MetricTooltip>
