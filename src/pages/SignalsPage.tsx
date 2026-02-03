@@ -1,16 +1,19 @@
 import { useState, useEffect } from "react";
 import SiteHeader from "@/components/SiteHeader";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import ResolvedSignals from "@/components/ResolvedSignals";
 import { 
   RefreshCw, 
   Download, 
   ExternalLink,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Activity,
+  Zap
 } from "lucide-react";
 
 interface Signal {
@@ -86,19 +89,65 @@ const SignalsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black text-green-400 font-mono">
+    <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black">
       <SiteHeader />
       
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Header */}
+      {/* Hero Section */}
+      <section className="relative py-12 sm:py-16 border-b border-green-500/10">
+        <div className="absolute inset-0 bg-gradient-to-b from-green-500/5 to-transparent pointer-events-none" />
+        <div className="container mx-auto px-6 sm:px-8 max-w-7xl relative">
+          <div className="text-center space-y-4">
+            <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-green-400 via-green-300 to-green-500 bg-clip-text text-transparent">
+              Live Market Signals
+            </h1>
+            <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+              Real-time high-conviction opportunities identified by Zigma AI
+            </p>
+          </div>
+        </div>
+      </section>
+      
+      <div className="container mx-auto px-6 sm:px-8 py-8 max-w-7xl">
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <Card className="bg-gradient-to-br from-gray-900 to-gray-900/50 border-green-500/20">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-400 mb-1">Active Signals</p>
+                  <p className="text-3xl font-bold text-white">{stats.activeSignals}</p>
+                </div>
+                <Activity className="w-10 h-10 text-green-400 opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-gray-900 to-gray-900/50 border-blue-500/20">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-400 mb-1">Avg Confidence</p>
+                  <p className="text-3xl font-bold text-white">{stats.avgConfidence}%</p>
+                </div>
+                <TrendingUp className="w-10 h-10 text-blue-400 opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-gray-900 to-gray-900/50 border-purple-500/20">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-400 mb-1">Avg Edge</p>
+                  <p className="text-3xl font-bold text-white">{stats.avgEdge}%</p>
+                </div>
+                <Zap className="w-10 h-10 text-purple-400 opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filters */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-4xl font-bold text-white mb-2">LIVE SIGNALS</h1>
-              <p className="text-green-300/60">
-                REAL-TIME • AI-powered prediction market opportunities updated every cycle
-              </p>
-            </div>
             <div className="flex gap-3">
               <Button
                 onClick={fetchSignals}
@@ -341,6 +390,13 @@ const SignalsPage = () => {
             )}
           </>
         )}
+
+        {/* Resolved Signals Section */}
+        <div className="mt-16">
+          <h2 className="text-3xl font-bold text-white mb-2">Resolved Signals - Track Record</h2>
+          <p className="text-green-300/60 mb-8">Historical performance from manually tracked trades</p>
+          <ResolvedSignals />
+        </div>
 
         {/* Disclaimer */}
         <div className="mt-12 text-center">

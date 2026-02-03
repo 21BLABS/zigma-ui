@@ -28,6 +28,8 @@ import { CriticalRiskAlert } from './CriticalRiskAlert';
 import { PnLTrendChart } from './PnLTrendChart';
 import { CategoryPerformanceChart } from './CategoryPerformanceChart';
 import { PositionTable } from './PositionTable';
+import { ShareableUserCard } from './ShareableUserCard';
+import html2canvas from 'html2canvas';
 
 interface UserProfileCardProps {
   userProfile: {
@@ -53,6 +55,7 @@ interface UserProfileCardProps {
 
 export const UserProfileCard: React.FC<UserProfileCardProps> = ({ userProfile, content }) => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [isSharing, setIsSharing] = useState(false);
   const { maker, metrics, positions = [], activity = [] } = userProfile;
 
   // Debug logging
@@ -116,6 +119,75 @@ export const UserProfileCard: React.FC<UserProfileCardProps> = ({ userProfile, c
   };
 
   const health = getHealthGrade(healthScore);
+
+  // Handle share/export
+  const handleShareProfile = async () => {
+    try {
+      setIsSharing(true);
+      
+      // Create temporary container
+      const container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      document.body.appendChild(container);
+
+      // Render ShareableUserCard
+      const { createRoot } = await import('react-dom/client');
+      const root = createRoot(container);
+      
+      await new Promise<void>((resolve) => {
+        root.render(
+          <ShareableUserCard
+            walletAddress={maker}
+            balance={metrics.balance}
+            totalPnl={totalPnl}
+            winRate={metrics.winRate}
+            totalTrades={metrics.totalTrades}
+            totalVolume={metrics.totalVolume}
+            grade={health.grade}
+            topMarkets={metrics.topMarkets || []}
+            timestamp={new Date().toISOString()}
+          />
+        );
+        setTimeout(resolve, 500);
+      });
+
+      // Capture as image
+      const card = container.querySelector('#shareable-user-card') as HTMLElement;
+      if (card) {
+        const canvas = await html2canvas(card, {
+          backgroundColor: '#000000',
+          scale: 2,
+        });
+        
+        // Download image
+        const link = document.createElement('a');
+        link.download = `zigma-trader-${maker.slice(0, 6)}-${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        
+        const toast = document.createElement('div');
+        toast.className = 'fixed top-4 right-4 bg-green-500 text-black px-6 py-3 rounded-lg shadow-lg z-50 font-semibold';
+        toast.textContent = '📸 Profile card downloaded!';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+      }
+
+      // Cleanup
+      root.unmount();
+      document.body.removeChild(container);
+    } catch (error) {
+      console.error('Failed to generate shareable card:', error);
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 font-semibold';
+      toast.textContent = '❌ Failed to generate card';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    } finally {
+      setIsSharing(false);
+    }
+  };
 
   // Risk assessment
   const getRiskLevel = () => {
@@ -224,13 +296,25 @@ ${content}
               </div>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="border-green-500/30" onClick={handleShare}>
+              <Button 
+                onClick={handleShareProfile}
+                disabled={isSharing}
+                variant="outline" 
+                size="sm" 
+                className="border-purple-500/30 hover:bg-purple-500/10 text-purple-400 disabled:opacity-50"
+              >
                 <Share2 className="w-4 h-4 mr-2" />
-                Share
+                {isSharing ? 'Generating...' : 'Share'}
               </Button>
-              <Button variant="outline" size="sm" className="border-green-500/30" onClick={handleExport}>
+              <Button 
+                onClick={handleShareProfile}
+                disabled={isSharing}
+                variant="outline" 
+                size="sm" 
+                className="border-blue-500/30 hover:bg-blue-500/10 text-blue-400 disabled:opacity-50"
+              >
                 <Download className="w-4 h-4 mr-2" />
-                Export
+                {isSharing ? 'Generating...' : 'Export'}
               </Button>
             </div>
           </div>

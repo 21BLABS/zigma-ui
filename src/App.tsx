@@ -16,6 +16,9 @@ import Chat from "./pages/Chat";
 import Analytics from "./pages/Analytics";
 import SignalPerformance from "./pages/SignalPerformance";
 import Settings from "./pages/Settings";
+import AgentDashboard from "./pages/AgentDashboard";
+import Skills from "./pages/Skills";
+import Leaderboard from "./pages/Leaderboard";
 import TermsOfService from "./pages/TermsOfService";
 import UserGuide from "./pages/UserGuide";
 import SDKGuide from "./pages/SDKGuide";
@@ -83,6 +86,21 @@ const AppContent = () => {
       <Route path="/chat" element={
         <ProtectedRoute>
           <Chat />
+        </ProtectedRoute>
+      } />
+      <Route path="/agent" element={
+        <ProtectedRoute>
+          <AgentDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/skills" element={
+        <ProtectedRoute>
+          <Skills />
+        </ProtectedRoute>
+      } />
+      <Route path="/leaderboard" element={
+        <ProtectedRoute>
+          <Leaderboard />
         </ProtectedRoute>
       } />
       

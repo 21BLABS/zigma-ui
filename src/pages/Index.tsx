@@ -26,12 +26,12 @@ const Index = () => {
     <div className="min-h-screen bg-black text-green-400 font-mono">
       <SiteHeader />
       
-      <main className="p-4">
+      <main className="p-6 sm:p-8 relative">
         {/* Subtle CRT Effects */}
-        <div className="fixed inset-0 bg-gradient-to-b from-transparent via-transparent to-black opacity-20 pointer-events-none" />
-        <div className="fixed inset-0 bg-[radial-gradient(circle_at_center,_transparent_50%,_rgba(0,0,0,0.8)_100%)] pointer-events-none" />
+        <div className="fixed inset-0 bg-gradient-to-b from-transparent via-transparent to-black opacity-20 pointer-events-none z-0" />
+        <div className="fixed inset-0 bg-[radial-gradient(circle_at_center,_transparent_50%,_rgba(0,0,0,0.8)_100%)] pointer-events-none z-0" />
 
-        <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 relative z-10">
           {/* Left Panel: Core Philosophy */}
           <div className="space-y-8">
             <Hero />
@@ -70,6 +70,46 @@ const Index = () => {
               </div>
             </div>
 
+            {/* Platform for Developers */}
+            <div className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-purple-500/30 rounded-lg p-6">
+              <h3 className="text-xl font-bold text-purple-400 mb-4 flex items-center gap-2">
+                🤖 AGENT PLATFORM
+              </h3>
+              <p className="text-sm text-gray-300 mb-4">
+                Build autonomous trading agents with Zigma intelligence. Access 10 modular skills, real-time signals, and token-gated features.
+              </p>
+              <div className="space-y-3 mb-4">
+                <div className="flex items-start gap-2">
+                  <span className="text-purple-400">✓</span>
+                  <p className="text-xs text-gray-400">10 AI-powered trading skills (FREE/BASIC/PRO tiers)</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-purple-400">✓</span>
+                  <p className="text-xs text-gray-400">Real-time signal feeds from Zigma Oracle</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-purple-400">✓</span>
+                  <p className="text-xs text-gray-400">Autonomous execution & position management</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <Link
+                  to="/agent"
+                  className="flex-1 text-center py-2 px-4 bg-purple-600/20 border border-purple-400/60 rounded-lg text-purple-200 hover:bg-purple-600/30 transition-all text-xs font-semibold uppercase tracking-wider"
+                >
+                  My Agent
+                </Link>
+                <a
+                  href="http://localhost:3002"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 text-center py-2 px-4 bg-purple-500/10 border border-purple-400/60 rounded-lg text-purple-200 hover:bg-purple-500/20 transition-all text-xs font-semibold uppercase tracking-wider"
+                >
+                  Developer Docs
+                </a>
+              </div>
+            </div>
+
             {/* Roadmap Section */}
             <div className="bg-black/60 border border-green-500/30 rounded-lg p-6">
               <h3 className="text-xl font-bold text-green-400 mb-4 flex items-center gap-2">
@@ -91,7 +131,7 @@ const Index = () => {
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="text-blue-400 text-xl">📱</span>
+                  <span className="text-blue-400 text-xl">�</span>
                   <div>
                     <p className="font-semibold text-blue-400">Molt Integration</p>
                     <p className="text-xs text-gray-400">Q1 2026 | Trade via WhatsApp, Telegram, Discord, X</p>

@@ -16,6 +16,9 @@ import { db } from '@/lib/supabase';
 import { magic } from '../lib/magic';
 import { SmartAnalysisCard } from '@/components/SmartAnalysisCard';
 import { UserProfileCard } from '@/components/UserProfileCard';
+import { AnalysisLoader } from '@/components/AnalysisLoader';
+import { ShareableAnalysisCard } from '@/components/ShareableAnalysisCard';
+import html2canvas from 'html2canvas';
 
 interface Recommendation {
   action?: string;
@@ -84,6 +87,10 @@ const Chat = () => {
   const [isLoadingUsage, setIsLoadingUsage] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentConfig, setPaymentConfig] = useState(null);
+  const [savedAnalyses, setSavedAnalyses] = useState<any[]>([]);
+  const [trackedMarkets, setTrackedMarkets] = useState<string[]>([]);
+  const [isAnalyzingMultiOutcome, setIsAnalyzingMultiOutcome] = useState(false);
+  const [isAnalyzingUser, setIsAnalyzingUser] = useState(false);
   const feedRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -198,6 +205,7 @@ const Chat = () => {
 
     // Use polymarketUser as message if main input is empty (for user analysis)
     const messageContent = input.trim() || (polymarketUser.trim() ? `Analyze user: ${polymarketUser.trim()}` : `Analyze market: ${marketId.trim()}`);
+    const isUserQuery = messageContent.toLowerCase().includes('analyze user') || polymarketUser.trim().length > 0;
     
     const userMessage: ChatMessage = {
       role: 'user',
@@ -208,6 +216,8 @@ const Chat = () => {
     setMessages(prev => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
+    setIsAnalyzingMultiOutcome(false);
+    setIsAnalyzingUser(isUserQuery);
     setError(null);
 
     // Add to query history
@@ -265,6 +275,11 @@ const Chat = () => {
         allMarketsCount: data.allMarkets?.length || 0,
         allMarketsPreview: data.allMarkets?.slice(0, 3).map(m => m.question)
       });
+      
+      // Set multi-outcome flag for loader
+      if (data.isMultiOutcome) {
+        setIsAnalyzingMultiOutcome(true);
+      }
 
       const assistantMessage: ChatMessage = {
         role: 'assistant',
@@ -360,15 +375,129 @@ const Chat = () => {
     // chatStatus will auto-refresh when wallet balance changes
   };
 
+  // Save analysis to localStorage
+  const handleSaveAnalysis = (message: ChatMessage) => {
+    const savedData = {
+      id: Date.now().toString(),
+      timestamp: new Date().toISOString(),
+      question: message.content,
+      recommendation: message.recommendation,
+      market: message.market,
+      analysis: message.analysis,
+    };
+    
+    const existing = JSON.parse(localStorage.getItem('zigma_saved_analyses') || '[]');
+    existing.push(savedData);
+    localStorage.setItem('zigma_saved_analyses', JSON.stringify(existing));
+    setSavedAnalyses(existing);
+    
+    // Show toast notification
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-4 right-4 bg-green-500 text-black px-6 py-3 rounded-lg shadow-lg z-50 font-semibold';
+    toast.textContent = '✓ Analysis saved successfully!';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  };
+
+  // Track market (add to watchlist)
+  const handleTrackMarket = (market: any) => {
+    const marketId = market?.id || market?.question;
+    if (!marketId) return;
+    
+    const existing = JSON.parse(localStorage.getItem('zigma_tracked_markets') || '[]');
+    if (!existing.includes(marketId)) {
+      existing.push(marketId);
+      localStorage.setItem('zigma_tracked_markets', JSON.stringify(existing));
+      setTrackedMarkets(existing);
+      
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-4 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 font-semibold';
+      toast.textContent = '📊 Market added to watchlist!';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+  };
+
+  // Set alert
+  const handleSetAlert = (market: any) => {
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-4 right-4 bg-yellow-500 text-black px-6 py-3 rounded-lg shadow-lg z-50 font-semibold';
+    toast.textContent = '🔔 Alert feature coming soon!';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  };
+
+  // Share analysis - generate and download branded card
+  const handleShareAnalysis = async (message: ChatMessage) => {
+    try {
+      // Create temporary container for shareable card
+      const container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      document.body.appendChild(container);
+
+      // Render ShareableAnalysisCard
+      const { createRoot } = await import('react-dom/client');
+      const root = createRoot(container);
+      
+      await new Promise<void>((resolve) => {
+        root.render(
+          <ShareableAnalysisCard
+            marketQuestion={message.market?.question || 'Market Analysis'}
+            recommendation={message.recommendation?.summary || message.content.substring(0, 100)}
+            confidence={message.recommendation?.confidence || 0}
+            edge={message.recommendation?.effectiveEdge || 0}
+            yesPrice={message.market?.yesPrice || 0.5}
+            noPrice={message.market?.noPrice || 0.5}
+            liquidity={message.market?.liquidity || 0}
+            timestamp={message.timestamp}
+          />
+        );
+        setTimeout(resolve, 500); // Wait for render
+      });
+
+      // Capture as image
+      const card = container.querySelector('#shareable-analysis-card') as HTMLElement;
+      if (card) {
+        const canvas = await html2canvas(card, {
+          backgroundColor: '#000000',
+          scale: 2,
+        });
+        
+        // Download image
+        const link = document.createElement('a');
+        link.download = `zigma-analysis-${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        
+        const toast = document.createElement('div');
+        toast.className = 'fixed top-4 right-4 bg-green-500 text-black px-6 py-3 rounded-lg shadow-lg z-50 font-semibold';
+        toast.textContent = '📸 Analysis card downloaded!';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+      }
+
+      // Cleanup
+      root.unmount();
+      document.body.removeChild(container);
+    } catch (error) {
+      console.error('Failed to generate shareable card:', error);
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 font-semibold';
+      toast.textContent = '❌ Failed to generate card';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+  };
+
   // Render helpers
   const renderRecommendation = (recommendation: any) => {
     if (!recommendation) return null;
-    
     return (
-      <Card className="mt-3 bg-blue-900/20 border-blue-500/30">
-        <CardContent className="p-3">
-          <h4 className="text-sm font-semibold text-blue-300 mb-2">Recommendation</h4>
-          <p className="text-xs text-blue-200">{recommendation.summary || "Analysis complete"}</p>
+      <Card className="mb-6 border-green-500/30 bg-gradient-to-br from-gray-950 to-gray-900 shadow-xl">
+        <CardContent>
+          <p className="text-xs text-green-200">{recommendation.summary || "Analysis complete"}</p>
         </CardContent>
       </Card>
     );
@@ -378,17 +507,18 @@ const Chat = () => {
   // MAIN RENDER
   // ============================================================
   return (
-    <div className="min-h-screen bg-black text-green-100">
+    <div className="min-h-screen bg-black text-green-400 font-mono">
       <SiteHeader />
-      <main className="max-w-5xl mx-auto py-12 px-4 sm:px-6">
-        <header className="space-y-3 mb-10">
-          <p className="text-xs uppercase tracking-[0.4em] text-green-400/80">ZIGMA TERMINAL</p>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white">Ask Zigma about any market</h1>
-          <p className="text-sm sm:text-base text-gray-400 max-w-2xl">
-            Paste a Polymarket link or ask a question. Get instant analysis with edge detection.
-          </p>
-        </header>
-
+      <div className="container mx-auto px-6 sm:px-8 py-8 max-w-7xl">
+        {/* Header with gradient background */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-900/20 via-blue-900/20 to-purple-900/20 border border-green-500/30 p-8 mb-8">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(34,197,94,0.1),transparent_50%)] pointer-events-none" />
+          <div className="relative z-10">
+            <p className="text-xs uppercase tracking-[0.4em] text-green-300 mb-2">ZIGMA CHAT</p>
+            <h1 className="text-5xl font-bold text-white mb-3 bg-gradient-to-r from-white to-green-400 bg-clip-text text-transparent">Live Interrogation</h1>
+            <p className="text-green-300/80 text-lg">Ask Zigma anything about prediction markets</p>
+          </div>
+        </div>
 
         {/* Credit Access Restriction */}
         {isAuthenticated && chatStatus && !chatStatus.canChat && !chatStatus.usingFreeTrial && (
@@ -439,6 +569,7 @@ const Chat = () => {
           </div>
         )}
 
+        {/* Authentication Required */}
         {!isAuthenticated && (
           <div className="mb-8 bg-yellow-900/20 border border-yellow-500/30 rounded-xl p-6">
             <div className="flex items-start gap-4">
@@ -520,11 +651,11 @@ const Chat = () => {
               <div className="grid gap-4 pt-2 border-t border-green-500/20">
                 <div>
                   <label className="text-xs uppercase tracking-wider text-muted-foreground">Market ID</label>
-                  <Input value={marketId} onChange={(e) => setMarketId(e.target.value)} placeholder="Polymarket UUID" className="mt-2 bg-black/60 border-green-500/30" />
+                  <Input value={marketId} onChange={(e) => setMarketId(e.target.value)} placeholder="Polymarket UUID" className="mt-2 bg-black/60 border border-gray-700 text-gray-200 px-2 py-1 rounded" />
                 </div>
                 <div>
                   <label className="text-xs uppercase tracking-wider text-muted-foreground">User Wallet</label>
-                  <Input value={polymarketUser} onChange={(e) => setPolymarketUser(e.target.value)} placeholder="0x..." className="mt-2 bg-black/60 border-green-500/30" />
+                  <Input value={polymarketUser} onChange={(e) => setPolymarketUser(e.target.value)} placeholder="0x..." className="mt-2 bg-black/60 border border-gray-700 text-gray-200 px-2 py-1 rounded" />
                 </div>
               </div>
             )}
@@ -541,7 +672,7 @@ const Chat = () => {
                 💡 Examples
               </Button>
               <Button type="button" variant="outline" onClick={handleReset} className="border-gray-700 text-gray-300 hover:bg-gray-800 hover:border-red-500/40 transition-all text-xs" disabled={chatStatus && !chatStatus.canChat} aria-label="Clear conversation">🗑️ Clear</Button>
-              <Button type="submit" disabled={!canSubmit || (chatStatus && !chatStatus.canChat)} className="bg-green-600 hover:bg-green-500 text-black font-bold col-span-2 shadow-lg shadow-green-600/20 hover:shadow-green-500/30 transition-all" aria-label="Submit query to Zigma">
+              <Button type="submit" disabled={!canSubmit || (chatStatus && !chatStatus.canChat)} className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-black font-bold shadow-lg hover:shadow-xl hover:shadow-green-500/50 transition-all duration-300 hover:scale-105" aria-label="Submit query to Zigma">
                 {isLoading ? "Analyzing…" : (chatStatus && chatStatus.canChat) ? "Ask Zigma" : "ZIGMA Tokens Required"}
               </Button>
             </div>
@@ -549,11 +680,19 @@ const Chat = () => {
             {showSuggestions && (
               <div className="border border-green-500/20 rounded-lg bg-black/40 p-3">
                 <p className="text-xs text-muted-foreground mb-2">Suggested Queries</p>
-                {SUGGESTED_QUERIES.map((item, idx) => (
-                  <button key={idx} type="button" onClick={() => handleSuggestedQuery(item.query)} className="w-full text-left text-xs text-green-200 hover:bg-green-900/20 px-3 py-2 rounded">
-                    {item.label}
-                  </button>
-                ))}
+                <div className="space-y-2">
+                  {SUGGESTED_QUERIES.map((item, idx) => (
+                    <Button
+                      key={idx}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSuggestedQuery(item.query)}
+                      className="w-full text-left justify-start h-auto py-3 px-4 border-green-500/40 hover:bg-green-500/20 hover:border-green-500/60 transition-all duration-300 hover:scale-[1.02] shadow-md hover:shadow-lg"
+                    >
+                      {item.label}
+                    </Button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -642,10 +781,10 @@ const Chat = () => {
                             market={message.market}
                             allMarkets={message.allMarkets}
                             isMultiOutcome={message.isMultiOutcome}
-                            onSave={() => console.log('Save analysis')}
-                            onTrack={() => console.log('Track market')}
-                            onAlert={() => console.log('Set alert')}
-                            onShare={() => console.log('Share analysis')}
+                            onSave={() => handleSaveAnalysis(message)}
+                            onTrack={() => handleTrackMarket(message.market)}
+                            onAlert={() => handleSetAlert(message.market)}
+                            onShare={() => handleShareAnalysis(message)}
                             onRefresh={() => {
                               // Re-submit the original query
                               const userMessageIndex = index - 1;
@@ -669,9 +808,12 @@ const Chat = () => {
               })}
 
               {isLoading && (
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-green-500 border-t-transparent" />
-                  <span>Zigma is analyzing...</span>
+                <div className="space-y-4">
+                  <AnalysisLoader 
+                    isVisible={isLoading} 
+                    isMultiOutcome={isAnalyzingMultiOutcome}
+                    isUserAnalysis={isAnalyzingUser}
+                  />
                 </div>
               )}
             </div>
@@ -679,7 +821,7 @@ const Chat = () => {
             <Separator className="bg-green-500/10" />
           </div>
         </section>
-      </main>
+      </div>
 
       <Footer />
       <PaymentModal

@@ -15,8 +15,9 @@ import {
 
 const primaryNavItems = [
   { label: "Home", to: "/" },
+  { label: "Agent", to: "/agent" },
+  { label: "Skills", to: "/skills" },
   { label: "Chat", to: "/chat" },
-  { label: "Analytics", to: "/analytics" },
   { label: "Signals", to: "/signals" },
 ];
 
@@ -35,13 +36,13 @@ const SiteHeader = () => {
 
   return (
     <header className="sticky top-0 z-50 border-b border-green-500/20 bg-black/80 backdrop-blur">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 sm:px-6 py-4">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 sm:px-8 py-5 sm:py-6">
         <Link to="/" className="flex items-center gap-3 text-sm font-semibold tracking-[0.2em] text-green-400">
-          <img src="/logonobg.jpeg" alt="Zigma Logo" className="h-8 w-auto" />
+          <img src="/logonobg.jpeg" alt="Zigma Logo" className="h-10 w-auto" />
           <span className="hidden sm:inline">ZIGMA</span>
         </Link>
 
-        <nav className="hidden lg:flex items-center gap-6 text-xs uppercase tracking-[0.15em] text-muted-foreground">
+        <nav className="hidden lg:flex items-center gap-8 text-xs uppercase tracking-[0.15em] text-muted-foreground">
           {primaryNavItems.map((item) => (
             <NavLink
               key={item.to}
@@ -74,7 +75,7 @@ const SiteHeader = () => {
           </DropdownMenu>
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <NotificationBell />
           {isAuthenticated && user ? (
             <SimpleUserProfile />
@@ -126,7 +127,7 @@ const SiteHeader = () => {
 
       {mobileMenuOpen && (
         <nav className="lg:hidden border-t border-green-500/20 bg-black/95">
-          <div className="px-4 py-3 space-y-2">
+          <div className="px-6 py-4 space-y-3">
             {primaryNavItems.map((item) => (
               <NavLink
                 key={item.to}

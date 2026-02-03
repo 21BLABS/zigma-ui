@@ -9,7 +9,35 @@
     <link rel="canonical" href="https://zigma.pro" />
 
     <!-- CSP -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' http://localhost:3001 ws://localhost:3001 https://api.zigma.pro wss://api.zigma.pro https://cysuydnmbstaolswkyha.supabase.co https://phantom.app https://solflare.com https://backpack.app https://wallet.binance.com https://tonbridge.com https://api.dexscreener.com https://api.geckoterminal.com https://api.coingecko.com https://auth.magic.link https://api.magic.link https://api.mainnet-beta.solana.com https://api.solscan.io https://mainnet.helius-rpc.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://auth.magic.link; frame-src 'self' https://auth.magic.link; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: https:;">
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://auth.magic.link;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      img-src 'self' data: https: blob:;
+      font-src 'self' data: https://fonts.googleapis.com https://fonts.gstatic.com;
+      connect-src 'self' 
+        http://localhost:3001 
+        http://localhost:3002 
+        ws://localhost:3001 
+        https://api.zigma.pro 
+        wss://api.zigma.pro 
+        https://cysuydnmbstaolswkyha.supabase.co 
+        https://phantom.app 
+        https://solflare.com 
+        https://backpack.app 
+        https://wallet.binance.com 
+        https://tonbridge.com 
+        https://api.dexscreener.com 
+        https://api.geckoterminal.com 
+        https://api.coingecko.com 
+        https://auth.magic.link 
+        https://api.magic.link 
+        https://api.mainnet-beta.solana.com 
+        https://api.solscan.io 
+        https://mainnet.helius-rpc.com;
+      frame-src 'self' https://auth.magic.link https://verify.walletconnect.com https://verify.walletconnect.org;
+      worker-src 'self' blob:;
+    ">
 
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">

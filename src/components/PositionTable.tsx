@@ -28,14 +28,14 @@ type SortField = 'title' | 'size' | 'cashPnl' | 'percentPnl' | 'currentValue';
 type SortDirection = 'asc' | 'desc';
 type FilterType = 'all' | 'profitable' | 'losing' | 'large';
 
-export const PositionTable: React.FC<PositionTableProps> = ({ positions = [] }) => {
+export const PositionTable: React.FC<PositionTableProps> = ({ positions }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<SortField>('cashPnl');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [showCount, setShowCount] = useState(10);
 
-  // Safety check
+  // Safety check for positions
   if (!positions || !Array.isArray(positions)) {
     return (
       <Card className="bg-gray-900/80 border-green-500/20">
@@ -54,31 +54,31 @@ export const PositionTable: React.FC<PositionTableProps> = ({ positions = [] }) 
     // Apply search filter
     if (searchQuery) {
       filtered = filtered.filter(pos =>
-        pos.title.toLowerCase().includes(searchQuery.toLowerCase())
+        (pos.title || '').toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
     // Apply type filter
     switch (filterType) {
       case 'profitable':
-        filtered = filtered.filter(pos => pos.cashPnl > 0);
+        filtered = filtered.filter(pos => (pos.cashPnl || 0) > 0);
         break;
       case 'losing':
-        filtered = filtered.filter(pos => pos.cashPnl < 0);
+        filtered = filtered.filter(pos => (pos.cashPnl || 0) < 0);
         break;
       case 'large':
-        filtered = filtered.filter(pos => pos.currentValue > 1000);
+        filtered = filtered.filter(pos => (pos.currentValue || 0) > 1000);
         break;
     }
 
     // Apply sorting
     filtered.sort((a, b) => {
-      let aVal = a[sortField];
-      let bVal = b[sortField];
+      let aVal: string | number = a[sortField];
+      let bVal: string | number = b[sortField];
 
       if (sortField === 'title') {
-        aVal = (aVal as string).toLowerCase();
-        bVal = (bVal as string).toLowerCase();
+        aVal = String(aVal || '').toLowerCase();
+        bVal = String(bVal || '').toLowerCase();
       }
 
       if (sortDirection === 'asc') {
@@ -100,9 +100,9 @@ export const PositionTable: React.FC<PositionTableProps> = ({ positions = [] }) 
     }
   };
 
-  const totalValue = positions.reduce((sum, pos) => sum + pos.currentValue, 0);
-  const totalPnl = positions.reduce((sum, pos) => sum + pos.cashPnl, 0);
-  const profitableCount = positions.filter(pos => pos.cashPnl > 0).length;
+  const totalValue = positions.reduce((sum, pos) => sum + (pos.currentValue || 0), 0);
+  const totalPnl = positions.reduce((sum, pos) => sum + (pos.cashPnl || 0), 0);
+  const profitableCount = positions.filter(pos => (pos.cashPnl || 0) > 0).length;
 
   return (
     <Card className="bg-gray-900/80 border-green-500/20">
@@ -229,7 +229,7 @@ export const PositionTable: React.FC<PositionTableProps> = ({ positions = [] }) 
                     <TableRow key={index} className="hover:bg-green-500/5">
                       <TableCell className="font-medium max-w-xs">
                         <div className="flex items-center gap-2">
-                          <span className="truncate text-white">{position.title}</span>
+                          <div className="font-medium text-white truncate max-w-[300px]">{position.title || 'Unknown Market'}</div>
                           {position.slug && (
                             <a
                               href={`https://polymarket.com/event/${position.slug}`}
@@ -243,27 +243,27 @@ export const PositionTable: React.FC<PositionTableProps> = ({ positions = [] }) 
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={position.outcome === 'Yes' ? 'default' : 'secondary'} className="text-xs">
-                          {position.outcome}
+                        <Badge variant={(position.outcome || '') === 'Yes' ? 'default' : 'secondary'} className="text-xs">
+                          {position.outcome || 'Unknown'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right text-white">
-                        ${position.currentValue.toFixed(2)}
+                        ${(position.currentValue || 0).toFixed(2)}
                       </TableCell>
                       <TableCell className={cn(
                         "text-right font-semibold",
-                        position.cashPnl >= 0 ? "text-green-400" : "text-red-400"
+                        (position.cashPnl || 0) >= 0 ? "text-green-400" : "text-red-400"
                       )}>
-                        {position.cashPnl >= 0 ? '+' : ''}${position.cashPnl.toFixed(2)}
+                        {(position.cashPnl || 0) >= 0 ? '+' : ''}{(position.cashPnl || 0).toFixed(2)}
                       </TableCell>
                       <TableCell className={cn(
                         "text-right font-semibold",
-                        position.percentPnl >= 0 ? "text-green-400" : "text-red-400"
+                        (position.percentPnl || 0) >= 0 ? "text-green-400" : "text-red-400"
                       )}>
-                        {position.percentPnl >= 0 ? '+' : ''}{position.percentPnl.toFixed(1)}%
+                        {(position.percentPnl || 0) >= 0 ? '+' : ''}{(position.percentPnl || 0).toFixed(1)}%
                       </TableCell>
                       <TableCell className="text-right text-gray-400">
-                        ${position.curPrice.toFixed(3)}
+                        ${(position.curPrice || 0).toFixed(3)}
                       </TableCell>
                     </TableRow>
                   ))}

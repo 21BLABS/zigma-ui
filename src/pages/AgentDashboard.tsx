@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Activity, TrendingUp, Zap, Shield, Wallet, Settings } from "lucide-react";
+import { getOrCreateAgent, getAgentStats, getEnabledSkills, type EnabledSkill as PlatformEnabledSkill } from "@/lib/platformApi";
+import { ActivityFeed } from "@/components/ActivityFeed";
 
 interface AgentStats {
   tier: 'FREE' | 'BASIC' | 'PRO' | 'WHALE';
@@ -27,6 +29,9 @@ interface EnabledSkill {
   status: 'active' | 'paused';
   tradesExecuted: number;
   pnl: number;
+  enabledAt?: string;
+  lastExecuted?: string;
+  config?: Record<string, any>;
 }
 
 const AgentDashboard = () => {
@@ -45,58 +50,76 @@ const AgentDashboard = () => {
   });
 
   const [enabledSkills, setEnabledSkills] = useState<EnabledSkill[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchAgentData = async () => {
       try {
-        // Get agent ID from auth context or localStorage
-        const PLATFORM_API = import.meta.env.VITE_PLATFORM_API_URL || 'http://localhost:3002';
-        const agentId = localStorage.getItem('agentId') || 'default-agent';
+        setLoading(true);
+        // Get or create agent (auto-register on first login)
+        const agent = await getOrCreateAgent();
         
-        // Fetch agent stats
-        const statsResponse = await fetch(`${PLATFORM_API}/api/agents/${agentId}`);
-        if (statsResponse.ok) {
-          const agentData = await statsResponse.json();
+        if (agent) {
+          // Fetch agent stats
+          const agentStats = await getAgentStats(agent.id);
+          
+          // Fetch enabled skills
+          const skills = await getEnabledSkills(agent.id);
+          setEnabledSkills(skills.map(skill => ({
+            id: skill.id,
+            name: skill.name,
+            status: skill.status,
+            tradesExecuted: skill.tradesExecuted,
+            pnl: skill.pnl,
+            enabledAt: skill.enabledAt,
+            lastExecuted: skill.lastExecuted,
+            config: skill.config,
+          })));
+          
           setStats({
-            tier: agentData.tier || 'FREE',
-            zigmaBalance: agentData.zigmaBalance || 0,
-            signalsUsed: agentData.usage?.signalsUsed || 0,
-            signalsLimit: agentData.usage?.signalsLimit || 10,
-            tradesExecuted: agentData.usage?.tradesExecuted || 0,
-            tradesLimit: agentData.usage?.tradesLimit || 5,
-            skillsEnabled: agentData.usage?.skillsEnabled || 0,
-            skillsLimit: agentData.usage?.skillsLimit || 3,
-            totalPnL: agentData.performance?.totalPnL || 0,
-            winRate: agentData.performance?.winRate || 0,
+            tier: agent.tier,
+            zigmaBalance: agent.zigmaBalance,
+            signalsUsed: 0, // TODO: Track usage from backend
+            signalsLimit: agent.tier === 'FREE' ? 10 : agent.tier === 'BASIC' ? 50 : 200,
+            tradesExecuted: agentStats?.totalTrades || 0,
+            tradesLimit: agent.tier === 'FREE' ? 5 : agent.tier === 'BASIC' ? 20 : 100,
+            skillsEnabled: skills.length,
+            skillsLimit: agent.tier === 'FREE' ? 3 : agent.tier === 'BASIC' ? 6 : 10,
+            totalPnL: agentStats?.totalPnl || 0,
+            winRate: agentStats?.winRate || 0,
           });
-        }
-
-        // Fetch enabled skills
-        const skillsResponse = await fetch(`${PLATFORM_API}/api/agents/${agentId}/skills`);
-        if (skillsResponse.ok) {
-          const skillsData = await skillsResponse.json();
-          setEnabledSkills(skillsData.data || []);
+        } else {
+          // No agent yet - show FREE tier defaults
+          setStats({
+            tier: 'FREE',
+            zigmaBalance: 0,
+            signalsUsed: 0,
+            signalsLimit: 10,
+            tradesExecuted: 0,
+            tradesLimit: 5,
+            skillsEnabled: 0,
+            skillsLimit: 3,
+            totalPnL: 0,
+            winRate: 0,
+          });
         }
       } catch (error) {
         console.error('Failed to fetch agent data:', error);
-        // Fallback to mock data on error
+        // Show FREE tier defaults on error
         setStats({
-          tier: 'PRO',
-          zigmaBalance: 15000,
-          signalsUsed: 45,
-          signalsLimit: 200,
-          tradesExecuted: 12,
-          tradesLimit: 50,
-          skillsEnabled: 3,
-          skillsLimit: 6,
-          totalPnL: 1250.50,
-          winRate: 68.5,
+          tier: 'FREE',
+          zigmaBalance: 0,
+          signalsUsed: 0,
+          signalsLimit: 10,
+          tradesExecuted: 0,
+          tradesLimit: 5,
+          skillsEnabled: 0,
+          skillsLimit: 3,
+          totalPnL: 0,
+          winRate: 0,
         });
-        setEnabledSkills([
-          { id: 'high-conviction', name: 'High Conviction Filter', status: 'active', tradesExecuted: 5, pnl: 450.25 },
-          { id: 'crypto-oracle', name: 'Crypto Oracle', status: 'active', tradesExecuted: 4, pnl: 320.75 },
-          { id: 'weather-oracle', name: 'Weather Oracle', status: 'active', tradesExecuted: 3, pnl: 479.50 },
-        ]);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -121,7 +144,12 @@ const AgentDashboard = () => {
   return (
     <div className="min-h-screen bg-black text-green-400 font-mono">
       <SiteHeader />
-      <main className="p-4 max-w-7xl mx-auto space-y-6">
+      <main className="p-6 sm:p-8 max-w-7xl mx-auto space-y-6">
+        {loading && (
+          <div className="text-center py-8 text-green-300">
+            <p>Loading agent data...</p>
+          </div>
+        )}
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
@@ -138,8 +166,8 @@ const AgentDashboard = () => {
         </div>
 
         {/* Agent Overview */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card className="bg-gray-950 border-green-500/20">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card className="bg-gray-950 border-green-500/20 hover:border-green-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-green-500/10">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm text-green-300 flex items-center gap-2">
                 <Shield className="w-4 h-4" />
@@ -161,7 +189,7 @@ const AgentDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gray-950 border-green-500/20">
+          <Card className="bg-gray-950 border-green-500/20 hover:border-green-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-green-500/10">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm text-green-300 flex items-center gap-2">
                 <Wallet className="w-4 h-4" />
@@ -175,7 +203,7 @@ const AgentDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gray-950 border-green-500/20">
+          <Card className="bg-gray-950 border-green-500/20 hover:border-green-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-green-500/10">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm text-green-300 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4" />
@@ -189,7 +217,7 @@ const AgentDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-gray-950 border-green-500/20">
+          <Card className="bg-gray-950 border-green-500/20 hover:border-green-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-green-500/10">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm text-green-300 flex items-center gap-2">
                 <Activity className="w-4 h-4" />
@@ -205,7 +233,7 @@ const AgentDashboard = () => {
         </div>
 
         {/* Usage Limits */}
-        <Card className="bg-gray-950 border-green-500/20">
+        <Card className="bg-gray-950 border-green-500/20 hover:border-green-500/30 transition-colors">
           <CardHeader>
             <CardTitle className="text-green-300">Usage Limits (Today)</CardTitle>
             <CardDescription className="text-green-300/60">
@@ -249,7 +277,7 @@ const AgentDashboard = () => {
         </Card>
 
         {/* Enabled Skills */}
-        <Card className="bg-gray-950 border-green-500/20">
+        <Card className="bg-gray-950 border-green-500/20 hover:border-green-500/30 transition-colors">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -317,21 +345,8 @@ const AgentDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Recent Activity */}
-        <Card className="bg-gray-950 border-green-500/20">
-          <CardHeader>
-            <CardTitle className="text-green-300">Recent Activity</CardTitle>
-            <CardDescription className="text-green-300/60">
-              Latest trades and signals
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8 text-green-300/60">
-              <p>Activity feed coming soon</p>
-              <p className="text-xs mt-2">Check the Analytics page for detailed performance</p>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Real-time Activity Feed */}
+        <ActivityFeed />
       </main>
       <Footer />
     </div>
