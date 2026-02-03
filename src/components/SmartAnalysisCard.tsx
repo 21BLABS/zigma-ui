@@ -36,13 +36,13 @@ interface SmartAnalysisCardProps {
     url?: string;
   };
   allMarkets?: Array<{
-    id: string;
-    question: string;
-    yesPrice: number;
-    noPrice: number;
-    liquidity: number;
-    volume24hr: number;
-    url: string;
+    id?: string;
+    question?: string;
+    yesPrice?: number;
+    noPrice?: number;
+    liquidity?: number;
+    volume24hr?: number;
+    url?: string;
   }>;
   isMultiOutcome?: boolean;
   onSave?: () => void;
@@ -50,6 +50,7 @@ interface SmartAnalysisCardProps {
   onAlert?: () => void;
   onShare?: () => void;
   onRefresh?: () => void;
+  onMarketSelect?: (market: any) => void;
 }
 
 export const SmartAnalysisCard: React.FC<SmartAnalysisCardProps> = ({
@@ -62,7 +63,8 @@ export const SmartAnalysisCard: React.FC<SmartAnalysisCardProps> = ({
   onTrack,
   onAlert,
   onShare,
-  onRefresh
+  onRefresh,
+  onMarketSelect
 }) => {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['market', 'recommendation']));
   
@@ -358,8 +360,11 @@ export const SmartAnalysisCard: React.FC<SmartAnalysisCardProps> = ({
         <MultiOutcomeMarketGrid
           markets={allMarkets}
           onSelectMarket={(selectedMarket) => {
-            // Open the specific market URL in a new tab
-            window.open(selectedMarket.url, '_blank');
+            console.log('[MULTI-OUTCOME] Selected market for analysis:', selectedMarket.question);
+            // Update the main market and analysis to show the selected outcome
+            if (onMarketSelect) {
+              onMarketSelect(selectedMarket);
+            }
           }}
         />
       )}
@@ -410,7 +415,7 @@ export const SmartAnalysisCard: React.FC<SmartAnalysisCardProps> = ({
           </div>
 
           {/* Visual Metrics */}
-          <div className="grid grid-cols-3 gap-4 mt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
             {/* Probability Gauge */}
             <div>
               <div className="text-xs text-muted-foreground mb-1">Zigma Odds</div>
@@ -469,7 +474,7 @@ export const SmartAnalysisCard: React.FC<SmartAnalysisCardProps> = ({
       </Card>
 
       {/* Toggle Buttons */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <Button
           onClick={() => setShowVisualizations(!showVisualizations)}
           variant="outline"
@@ -577,7 +582,7 @@ export const SmartAnalysisCard: React.FC<SmartAnalysisCardProps> = ({
       )}
 
       {/* Action Buttons */}
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
         <Button 
           onClick={handleSaveAnalysis}
           variant="outline" 

@@ -6,13 +6,13 @@ import { ExternalLink, TrendingUp, TrendingDown, DollarSign } from 'lucide-react
 import { cn } from '@/lib/utils';
 
 interface Market {
-  id: string;
-  question: string;
-  yesPrice: number;
-  noPrice: number;
-  liquidity: number;
-  volume24hr: number;
-  url: string;
+  id?: string;
+  question?: string;
+  yesPrice?: number;
+  noPrice?: number;
+  liquidity?: number;
+  volume24hr?: number;
+  url?: string;
 }
 
 interface MultiOutcomeMarketGridProps {
@@ -28,10 +28,11 @@ export const MultiOutcomeMarketGrid: React.FC<MultiOutcomeMarketGridProps> = ({
     return (price * 100).toFixed(1);
   };
 
-  const formatLiquidity = (liquidity: number) => {
-    if (liquidity >= 1000000) return `$${(liquidity / 1000000).toFixed(1)}M`;
-    if (liquidity >= 1000) return `$${(liquidity / 1000).toFixed(0)}K`;
-    return `$${liquidity.toFixed(0)}`;
+  const formatLiquidity = (liquidity: number | undefined | null) => {
+    const value = Number(liquidity) || 0;
+    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
+    return `$${value.toFixed(0)}`;
   };
 
   const getPriceColor = (price: number) => {
@@ -54,7 +55,7 @@ export const MultiOutcomeMarketGrid: React.FC<MultiOutcomeMarketGridProps> = ({
         </Badge>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {markets.map((market) => {
           const yesPrice = market.yesPrice;
           const edge = yesPrice >= 0.5 ? 'High Probability' : yesPrice >= 0.2 ? 'Medium Probability' : 'Low Probability';

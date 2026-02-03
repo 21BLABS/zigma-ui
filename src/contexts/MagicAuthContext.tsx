@@ -32,6 +32,7 @@ interface MagicAuthContextType {
   login: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshChatStatus: () => Promise<void>;
+  getIdToken: () => Promise<string | null>;
 }
 
 const MagicAuthContext = createContext<MagicAuthContextType | undefined>(undefined);
@@ -195,6 +196,16 @@ export const MagicAuthProvider: React.FC<MagicAuthProviderProps> = ({ children }
     }
   };
 
+  const getIdToken = async (): Promise<string | null> => {
+    try {
+      const token = await magic.user.getIdToken();
+      return token;
+    } catch (error) {
+      console.error('Failed to get ID token:', error);
+      return null;
+    }
+  };
+
   const value: MagicAuthContextType = {
     user,
     walletAddress,
@@ -204,6 +215,7 @@ export const MagicAuthProvider: React.FC<MagicAuthProviderProps> = ({ children }
     login,
     logout,
     refreshChatStatus,
+    getIdToken,
   };
 
   return (

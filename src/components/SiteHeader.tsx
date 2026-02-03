@@ -54,9 +54,6 @@ const SiteHeader = () => {
           ))}
           
           <span className="text-foreground/30">|</span>
-          <Link to="/zigma" className="text-[10px] tracking-[0.2em] text-green-400 font-bold hover:text-green-300 transition-colors">$ZIGMA</Link>
-          
-          <span className="text-foreground/30">|</span>
           
           {/* Docs Dropdown */}
           <DropdownMenu>

@@ -17,15 +17,34 @@ import { magic } from '../lib/magic';
 import { SmartAnalysisCard } from '@/components/SmartAnalysisCard';
 import { UserProfileCard } from '@/components/UserProfileCard';
 
+interface Recommendation {
+  action?: string;
+  confidence?: number;
+  probability?: number;
+  marketOdds?: number;
+  effectiveEdge?: number;
+  summary?: string;
+}
+
+interface Market {
+  id?: string;
+  question?: string;
+  url?: string;
+  yesPrice?: number;
+  noPrice?: number;
+  liquidity?: number;
+  volume24hr?: number;
+}
+
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
-  recommendation?: any;
-  market?: any;
+  recommendation?: Recommendation;
+  market?: Market;
   analysis?: any;
   userProfile?: any;
-  allMarkets?: any[]; // Multi-outcome events (e.g., Bitcoin price ranges)
+  allMarkets?: Market[];
   isMultiOutcome?: boolean;
 }
 
@@ -33,11 +52,11 @@ interface ChatResponse {
   answer: string;
   confidence: number;
   sources?: string[];
-  recommendation?: any;
+  recommendation?: Recommendation;
   userProfile?: any;
-  market?: any;
+  market?: Market;
   analysis?: any;
-  allMarkets?: any[]; // Multi-outcome events
+  allMarkets?: Market[];
   isMultiOutcome?: boolean;
 }
 
@@ -57,8 +76,6 @@ const Chat = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [queryHistory, setQueryHistory] = useState<{ query: string; timestamp: string }[]>([]);
   const [historySearchQuery, setHistorySearchQuery] = useState("");
-  const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
-  const [editingContent, setEditingContent] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [marketId, setMarketId] = useState("");
@@ -305,32 +322,37 @@ const Chat = () => {
     setShowHistory(false);
   };
 
-  const handleEditMessage = (index: number) => {
-    setEditingMessageIndex(index);
-    setEditingContent(messages[index].content);
+  const handleExportConversation = () => {
+    const conversationText = messages.map(msg => {
+      const time = new Date(msg.timestamp).toLocaleString();
+      const role = msg.role === 'user' ? 'You' : 'Agent Zigma';
+      return `[${time}] ${role}:\n${msg.content}\n`;
+    }).join('\n---\n\n');
+    
+    const blob = new Blob([conversationText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `zigma-chat-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
-  const handleSaveEdit = () => {
-    if (editingMessageIndex !== null) {
-      setMessages(prev => prev.map((msg, idx) => 
-        idx === editingMessageIndex ? { ...msg, content: editingContent } : msg
-      ));
-      setEditingMessageIndex(null);
-      setEditingContent("");
+
+  const handleCopyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      // Show brief success toast
+      const toast = document.createElement('div');
+      toast.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+      toast.textContent = '✓ Copied to clipboard';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
     }
-  };
-
-  const handleCancelEdit = () => {
-    setEditingMessageIndex(null);
-    setEditingContent("");
-  };
-
-  const handleDeleteMessage = (index: number) => {
-    setMessages(prev => prev.filter((_, idx) => idx !== index));
-  };
-
-  const handleCopyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
   };
 
   const handlePaymentSuccess = () => {
@@ -358,34 +380,15 @@ const Chat = () => {
   return (
     <div className="min-h-screen bg-black text-green-100">
       <SiteHeader />
-      <main className="max-w-6xl mx-auto py-12 px-4 md:px-8">
-        <header className="space-y-4 mb-8">
-          <p className="text-sm uppercase tracking-[0.3em] text-green-500">ZIGMA TERMINAL / LIVE INTERROGATION</p>
-          <h1 className="text-4xl md:text-5xl font-semibold text-white">Ask Zigma about any Polymarket bet</h1>
-          <p className="text-base text-muted-foreground max-w-3xl">
-            Paste a market link, user wallet, or natural-language question. Press ⌘K to focus input.
+      <main className="max-w-5xl mx-auto py-12 px-4 sm:px-6">
+        <header className="space-y-3 mb-10">
+          <p className="text-xs uppercase tracking-[0.4em] text-green-400/80">ZIGMA TERMINAL</p>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white">Ask Zigma about any market</h1>
+          <p className="text-sm sm:text-base text-gray-400 max-w-2xl">
+            Paste a Polymarket link or ask a question. Get instant analysis with edge detection.
           </p>
         </header>
 
-        {/* Free Trial Banner */}
-        {isAuthenticated && chatStatus && chatStatus.canChat && chatStatus.usingFreeTrial && (
-          <div className="mb-8 bg-green-900/20 border border-green-500/30 rounded-xl p-6">
-            <div className="flex items-start gap-4">
-              <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-white font-bold">🎁</span>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-green-300 mb-2">Free Trial Active</h3>
-                <p className="text-green-200 mb-2">
-                  You have {chatStatus.freeChatsRemaining} free chats remaining!
-                </p>
-                <p className="text-sm text-green-300/80">
-                  After your free trial, you'll need ZIGMA tokens to continue. Get them early to unlock unlimited access.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Credit Access Restriction */}
         {isAuthenticated && chatStatus && !chatStatus.canChat && !chatStatus.usingFreeTrial && (
@@ -458,12 +461,12 @@ const Chat = () => {
           </div>
         )}
 
-        <section className="grid lg:grid-cols-[360px_minmax(0,1fr)] gap-8">
+        <section className="grid grid-cols-1 lg:grid-cols-[380px_minmax(0,1fr)] gap-6">
           {/* Left Panel - Form */}
-          <form onSubmit={handleSubmit} className="space-y-6 bg-gray-950/80 border border-green-500/20 p-6 rounded-xl">
+          <form onSubmit={handleSubmit} className="space-y-5 bg-gray-950/60 border border-green-500/20 p-6 rounded-xl backdrop-blur-sm">
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs uppercase tracking-wider text-muted-foreground">Ask Zigma</label>
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-xs uppercase tracking-[0.2em] text-green-400/80 font-semibold">Your Question</label>
                 {isAuthenticated && user && user.auth_provider === 'wallet' && (
                   <div className="flex items-center gap-2">
                     {isLoadingUsage ? (
@@ -502,11 +505,11 @@ const Chat = () => {
                   }
                 }}
                 placeholder="Paste a Polymarket URL or ask a question..."
-                className="mt-2 h-24 bg-black/60 border-green-500/30 text-green-100 placeholder:text-green-200/40"
+                className="mt-2 h-28 bg-black/80 border-green-500/30 text-white placeholder:text-gray-500 focus:border-green-400 focus:ring-2 focus:ring-green-400/20 transition-all"
               />
             </div>
 
-            <button type="button" onClick={() => setShowAdvanced(!showAdvanced)} className="text-xs text-green-400/80 hover:text-green-400 flex items-center gap-1">
+            <button type="button" onClick={() => setShowAdvanced(!showAdvanced)} className="text-xs text-gray-400 hover:text-green-400 flex items-center gap-2 transition-colors">
               <svg className={cn("w-3 h-3 transition-transform", showAdvanced && "rotate-90")} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
@@ -533,16 +536,12 @@ const Chat = () => {
               </div>
             )}
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <Button type="button" variant="outline" onClick={() => setShowSuggestions(!showSuggestions)} className="border-gray-700 text-gray-200 hover:bg-gray-900" disabled={chatStatus && !chatStatus.canChat}>
-                💡 Samples
+            <div className="grid grid-cols-2 gap-3">
+              <Button type="button" variant="outline" onClick={() => setShowSuggestions(!showSuggestions)} className="border-gray-700 text-gray-300 hover:bg-gray-800 hover:border-green-500/40 transition-all text-xs" disabled={chatStatus && !chatStatus.canChat} aria-label="Show suggested queries">
+                💡 Examples
               </Button>
-              <Button type="button" variant="outline" onClick={() => setShowHistory(!showHistory)} className="border-gray-700 text-gray-200 hover:bg-gray-900 relative" disabled={chatStatus && !chatStatus.canChat}>
-                📜 History
-                {queryHistory.length > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 text-black text-[10px] rounded-full flex items-center justify-center">{queryHistory.length}</span>}
-              </Button>
-              <Button type="button" variant="outline" onClick={handleReset} className="border-gray-700 text-gray-200 hover:bg-gray-900" disabled={chatStatus && !chatStatus.canChat}>🗑️ Clear</Button>
-              <Button type="submit" disabled={!canSubmit || (chatStatus && !chatStatus.canChat)} className="bg-green-600 hover:bg-green-500 text-black font-semibold col-span-2 md:col-span-3">
+              <Button type="button" variant="outline" onClick={handleReset} className="border-gray-700 text-gray-300 hover:bg-gray-800 hover:border-red-500/40 transition-all text-xs" disabled={chatStatus && !chatStatus.canChat} aria-label="Clear conversation">🗑️ Clear</Button>
+              <Button type="submit" disabled={!canSubmit || (chatStatus && !chatStatus.canChat)} className="bg-green-600 hover:bg-green-500 text-black font-bold col-span-2 shadow-lg shadow-green-600/20 hover:shadow-green-500/30 transition-all" aria-label="Submit query to Zigma">
                 {isLoading ? "Analyzing…" : (chatStatus && chatStatus.canChat) ? "Ask Zigma" : "ZIGMA Tokens Required"}
               </Button>
             </div>
@@ -577,32 +576,58 @@ const Chat = () => {
           </form>
 
           {/* Right Panel - Feed */}
-          <div className="bg-gray-950/80 border border-green-500/20 rounded-xl overflow-hidden flex flex-col">
-            <div className="p-5 border-b border-green-500/10 space-y-3">
-              <p className="text-xs uppercase tracking-[0.3em] text-green-400/80">Conversation Feed</p>
-              <p className="text-sm text-muted-foreground">Ask a question to start.</p>
+          <div className="bg-gray-950/60 border border-green-500/20 rounded-xl overflow-hidden flex flex-col backdrop-blur-sm">
+            <div className="p-5 border-b border-green-500/10 space-y-2">
+              <p className="text-xs uppercase tracking-[0.3em] text-green-400/80 font-semibold">Conversation</p>
+              <p className="text-xs text-gray-500">Real-time market analysis</p>
             </div>
 
-            <div ref={feedRef} className="flex-1 overflow-y-auto p-5 space-y-6">
+            <div ref={feedRef} className="flex-1 overflow-y-auto p-5 space-y-6" role="log" aria-live="polite" aria-label="Chat conversation">
               {messages.length === 0 && !isLoading && (
-                <div className="text-center text-muted-foreground text-sm py-12">
-                  <p className="text-4xl mb-4">🤖</p>
-                  <p>Awaiting your first question.</p>
+                <div className="text-center text-muted-foreground py-16 space-y-6">
+                  <div className="w-16 h-16 mx-auto bg-green-500/10 rounded-full flex items-center justify-center">
+                    <p className="text-3xl animate-pulse">🤖</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-lg font-semibold text-white">Ready to analyze</p>
+                    <p className="text-sm text-gray-500">Paste a market link or ask a question to begin</p>
+                  </div>
                 </div>
               )}
 
-              {[...messages].reverse().map((message, index) => {
+              {messages.map((message, index) => {
                 const isUser = message.role === "user";
                 return (
                   <div key={`${message.role}-${index}`} className={cn(isUser ? "ml-auto max-w-xl" : "mr-auto max-w-full")}>
                     {isUser ? (
-                      <div className="rounded-lg p-4 border bg-green-600/10 border-green-500/20">
-                        <div className="text-xs uppercase tracking-[0.2em] text-green-400/80 mb-2">You</div>
-                        <div className="text-green-100">{message.content}</div>
+                      <div className="rounded-xl p-4 bg-green-600/10 border border-green-500/30">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-[10px] uppercase tracking-[0.2em] text-green-400 font-semibold">You</div>
+                          <div className="text-[10px] text-gray-500">
+                            {new Date(message.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </div>
+                        <div className="text-sm text-white">{message.content}</div>
                       </div>
                     ) : (
                       <div>
-                        <div className="text-xs uppercase tracking-[0.2em] text-green-400/80 mb-3">Agent Zigma</div>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="text-xs uppercase tracking-[0.2em] text-green-400/80">Agent Zigma</div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-[10px] text-green-400/60">
+                              {new Date(message.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                            <button
+                              onClick={() => handleCopyToClipboard(message.content)}
+                              className="text-green-400/60 hover:text-green-400 transition-colors"
+                              aria-label="Copy message"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
                         {message.userProfile ? (
                           // Premium User Profile Display
                           <UserProfileCard 
@@ -623,10 +648,17 @@ const Chat = () => {
                             onShare={() => console.log('Share analysis')}
                             onRefresh={() => {
                               // Re-submit the original query
-                              const originalQuery = messages[messages.length - index - 1]?.content;
-                              if (originalQuery) {
-                                setInput(originalQuery);
+                              const userMessageIndex = index - 1;
+                              if (userMessageIndex >= 0 && messages[userMessageIndex]?.role === 'user') {
+                                setInput(messages[userMessageIndex].content);
                               }
+                            }}
+                            onMarketSelect={async (selectedMarket) => {
+                              // Re-analyze the selected multi-outcome market
+                              console.log('[CHAT] Re-analyzing selected market:', selectedMarket.question);
+                              setInput(selectedMarket.url || selectedMarket.question);
+                              // Trigger analysis by submitting the market URL/question
+                              handleSubmit(new Event('submit') as any);
                             }}
                           />
                         )}

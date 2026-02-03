@@ -11,8 +11,6 @@ const Footer = () => {
   const pageLinks = [
     { label: "Analytics", to: "/analytics", disabled: false },
     { label: "Signals", to: "/signals", disabled: false },
-    { label: "Basket", to: "/basket", disabled: true },
-    { label: "ZIGMA Token", to: "/zigma", disabled: false },
   ];
 
 const otherLinks = [

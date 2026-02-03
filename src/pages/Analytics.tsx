@@ -173,7 +173,7 @@ const Analytics = () => {
   const { data: riskMetrics, isLoading: riskLoading, error: riskError } = useQuery<RiskMetrics>({
     queryKey: ["risk-metrics"],
     queryFn: async () => {
-      const res = await fetch(`${apiBaseUrl}/api/risk-metrics`);
+      const res = await fetch(`${apiBaseUrl}/api/analytics/risk`);
       if (!res.ok) throw new Error("Failed to fetch risk metrics");
       return res.json();
     },
@@ -473,96 +473,6 @@ const Analytics = () => {
           </div>
         </div>
 
-        {/* System Health Score - Hero Section */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-            <span className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></span>
-            System Health & Signal Quality
-          </h2>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-            {/* Overall Health Score */}
-            <Card className="border-green-500/50 bg-gradient-to-br from-green-900/30 to-emerald-900/20 lg:col-span-1">
-              <CardHeader>
-                <CardTitle className="text-lg text-green-400">System Health Score</CardTitle>
-                <CardDescription>Composite quality metric</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-center">
-                  <div className="relative w-40 h-40">
-                    <svg className="transform -rotate-90 w-40 h-40">
-                      <circle cx="80" cy="80" r="60" fill="none" stroke="#22c55e20" strokeWidth="12" />
-                      <circle 
-                        cx="80" cy="80" r="60" fill="none" stroke="#22c55e" strokeWidth="12"
-                        strokeDasharray="377" strokeDashoffset="75" strokeLinecap="round"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-5xl font-bold text-green-400">87</span>
-                      <span className="text-sm text-green-400/70">/ 100</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4 space-y-2 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">✅ Edge Quality</span>
-                    <span className="text-green-400 font-semibold">9.8% avg</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">✅ Confidence</span>
-                    <span className="text-green-400 font-semibold">75% avg</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">✅ Active Signals</span>
-                    <span className="text-green-400 font-semibold">{accuracyMetrics?.totalSignals || 151}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">✅ Diversification</span>
-                    <span className="text-green-400 font-semibold">6 categories</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Expected Value */}
-            <Card className="border-green-500/30 bg-black/40 lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-lg text-green-400">💰 Expected Portfolio Value</CardTitle>
-                <CardDescription>Forward-looking projections based on current edge</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
-                    <p className="text-xs text-muted-foreground mb-1">Expected Return (Full Edge)</p>
-                    <p className="text-3xl font-bold text-green-400">+$1,481</p>
-                    <p className="text-sm text-green-400/70">+14.8% ROI</p>
-                    <p className="text-xs text-muted-foreground mt-2">If 9.8% avg edge holds across {accuracyMetrics?.totalSignals || 151} signals</p>
-                  </div>
-                  <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
-                    <p className="text-xs text-muted-foreground mb-1">Conservative (50% Edge)</p>
-                    <p className="text-3xl font-bold text-blue-400">+$740</p>
-                    <p className="text-sm text-blue-400/70">+7.4% ROI</p>
-                    <p className="text-xs text-muted-foreground mt-2">Assuming 50% edge realization rate</p>
-                  </div>
-                </div>
-                <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-                  <div className="bg-gray-800/50 rounded p-2">
-                    <p className="text-xs text-muted-foreground">Avg Edge</p>
-                    <p className="text-lg font-bold text-green-400">9.8%</p>
-                  </div>
-                  <div className="bg-gray-800/50 rounded p-2">
-                    <p className="text-xs text-muted-foreground">Position Size</p>
-                    <p className="text-lg font-bold text-white">$100</p>
-                  </div>
-                  <div className="bg-gray-800/50 rounded p-2">
-                    <p className="text-xs text-muted-foreground">Total Capital</p>
-                    <p className="text-lg font-bold text-white">$15,100</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
 
         {/* Risk Metrics Grid */}
         <div className="mb-8">
@@ -773,7 +683,9 @@ const Analytics = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-green-400">
-                  75.0%
+                  {categoryPerformance?.categories ? 
+                    ((Object.values(categoryPerformance.categories).reduce((sum, cat) => sum + cat.avgConfidence, 0) / Object.keys(categoryPerformance.categories).length) * 100).toFixed(1)
+                    : '0.0'}%
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Average prediction confidence
@@ -1560,112 +1472,6 @@ const Analytics = () => {
             </Card>
           </div>
 
-          {/* Risk Metrics */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-              Risk Assessment
-            </h2>
-            
-            <Card className="border-green-500/30 bg-black/40">
-              <CardHeader>
-                <CardTitle className="text-sm text-green-400">Portfolio Risk Metrics</CardTitle>
-                <CardDescription>Current risk assessment and exposure analysis</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {vizRiskLoading ? (
-                  <Skeleton className="h-64 bg-green-500/10" />
-                ) : visualizationRiskMetrics ? (
-                  <div className="space-y-6">
-                    {/* Overall Risk Score */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="relative w-32 h-32">
-                          <svg className="transform -rotate-90 w-32 h-32">
-                            <circle
-                              cx="64"
-                              cy="64"
-                              r="40"
-                              fill="none"
-                              stroke="#22c55e20"
-                              strokeWidth="10"
-                            />
-                            <circle
-                              cx="64"
-                              cy="64"
-                              r="40"
-                              fill="none"
-                              stroke={getRiskColor(overallRisk)}
-                              strokeWidth="10"
-                              strokeDasharray={`${(overallRisk / 100) * 251.2} 251.2`}
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                          <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-4xl font-bold" style={{ color: getRiskColor(overallRisk) }}>
-                              {overallRisk.toFixed(0)}
-                            </span>
-                            <span className="text-sm text-muted-foreground">Risk Score</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="space-y-3">
-                          <div>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span className="text-muted-foreground">Volatility</span>
-                              <span>{volatility.toFixed(0)}%</span>
-                            </div>
-                            <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
-                              <div 
-                                className="h-full transition-all"
-                                style={{ 
-                                  width: `${volatility}%`,
-                                  backgroundColor: getRiskColor(volatility)
-                                }}
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span className="text-muted-foreground">Concentration</span>
-                              <span>{concentration.toFixed(0)}%</span>
-                            </div>
-                            <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
-                              <div 
-                                className="h-full transition-all"
-                                style={{ 
-                                  width: `${concentration}%`,
-                                  backgroundColor: getRiskColor(concentration)
-                                }}
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span className="text-muted-foreground">Liquidity Risk</span>
-                              <span>{liquidity.toFixed(0)}%</span>
-                            </div>
-                            <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
-                              <div 
-                                className="h-full transition-all"
-                                style={{ 
-                                  width: `${liquidity}%`,
-                                  backgroundColor: getRiskColor(liquidity)
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-center py-8">No risk metrics available</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
         </div>
       </main>
 
