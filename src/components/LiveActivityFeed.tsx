@@ -27,7 +27,9 @@ const LiveActivityFeed = () => {
 
     const connectWebSocket = () => {
       try {
-        ws = new WebSocket('ws://localhost:3002/ws/activity');
+        const PLATFORM_API_URL = import.meta.env.VITE_PLATFORM_API_URL || 'https://platform.zigma.pro';
+        const wsUrl = PLATFORM_API_URL.replace('http', 'ws') + '/ws/activity';
+        ws = new WebSocket(wsUrl);
         
         ws.onopen = () => {
           console.log('[LiveFeed] WebSocket connected');
@@ -68,7 +70,8 @@ const LiveActivityFeed = () => {
 
   const fetchActivities = async () => {
     try {
-      const response = await fetch('http://localhost:3002/api/activity/recent?limit=50');
+      const PLATFORM_API_URL = import.meta.env.VITE_PLATFORM_API_URL || 'https://platform.zigma.pro';
+      const response = await fetch(`${PLATFORM_API_URL}/api/activity/recent?limit=50`);
       if (response.ok) {
         const data = await response.json();
         setActivities(data.activities || []);

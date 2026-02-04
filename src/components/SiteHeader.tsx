@@ -15,20 +15,18 @@ import {
 
 const primaryNavItems = [
   { label: "Home", to: "/" },
-  { label: "Agent", to: "/agent" },
-  { label: "Skills", to: "/skills" },
   { label: "Chat", to: "/chat" },
   { label: "Signals", to: "/signals" },
+  { label: "Analytics", to: "/analytics" },
+  { label: "Agent", to: "/agent" },
 ];
 
 const docsLinks = [
   { label: "Documentation", to: "/docs" },
-  { label: "API Documentation", to: "/api-documentation" },
-  { label: "SDK Guide", to: "/sdk-guide" },
-  { label: "User Guide", to: "/user-guide" },
   { label: "Manifesto", to: "/manifesto" },
   { label: "FAQ", to: "/faq" },
 ];
+
 
 const SiteHeader = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -132,13 +130,27 @@ const SiteHeader = () => {
               <NavLink
                 key={item.to}
                 to={item.to}
-                className="block py-2 text-xs uppercase tracking-[0.15em] text-muted-foreground hover:text-green-300"
+                className="block py-2 text-sm uppercase tracking-[0.15em] text-muted-foreground hover:text-green-300"
                 activeClassName="text-green-400"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {item.label}
               </NavLink>
             ))}
+            <div className="border-t border-green-500/20 pt-3 mt-3">
+              <div className="text-[10px] uppercase tracking-wider text-green-400/60 mb-2">Docs</div>
+              {docsLinks.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className="block py-2 text-sm uppercase tracking-[0.15em] text-muted-foreground hover:text-green-300"
+                  activeClassName="text-green-400"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {item.label}
+                </NavLink>
+              ))}
+            </div>
           </div>
         </nav>
       )}

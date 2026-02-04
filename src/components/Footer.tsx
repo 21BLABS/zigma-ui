@@ -12,6 +12,7 @@ const Footer = () => {
     { label: "Analytics", to: "/analytics", disabled: false },
     { label: "Leaderboard", to: "/leaderboard", disabled: false },
     { label: "Signals", to: "/signals", disabled: false },
+    { label: "Skills", to: "/skills", disabled: false },
   ];
 
 const otherLinks = [

@@ -505,20 +505,17 @@ const SignalPerformance = () => {
           )}
         </div>
 
-        {/* Historical Trades */}
+        {/* Executable Trades */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-6">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-cyan-400 blur-lg opacity-50"></div>
               <h2 className="relative text-2xl font-bold text-white flex items-center gap-2">
                 <span className="w-3 h-3 bg-blue-400 rounded-full shadow-lg shadow-blue-400/50"></span>
-                Historical Trades
+                Executable Trades
               </h2>
             </div>
-            <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-0 shadow-lg shadow-blue-500/30">
-              EXECUTED
-            </Badge>
-          </div>
+                      </div>
           
           {historicalLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -532,8 +529,8 @@ const SignalPerformance = () => {
           ) : (!historicalSignals || historicalSignals.length === 0) ? (
             <div className="text-center py-12 bg-gradient-to-br from-[#141414] to-[#0a0a0a] rounded-xl border border-gray-800">
               <div className="text-5xl mb-3">📊</div>
-              <div className="text-gray-400 text-base mb-1">No historical trades yet</div>
-              <p className="text-gray-600 text-sm">Executed trades will appear here</p>
+              <div className="text-gray-400 text-base mb-1">No executable trades yet</div>
+              <p className="text-gray-600 text-sm">Trades will appear here</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -542,7 +539,7 @@ const SignalPerformance = () => {
                   searchQuery === '' || 
                   signal.marketQuestion.toLowerCase().includes(searchQuery.toLowerCase())
                 )
-                .slice(0, 10)
+                .slice(0, 100)
                 .map((signal, index) => (
                   <a
                     key={`historical-${index}`}
@@ -556,10 +553,7 @@ const SignalPerformance = () => {
                     <div className="relative">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs">
-                            EXECUTED
-                          </Badge>
-                          {signal.tradeTier && (
+                                                    {signal.tradeTier && (
                             <Badge className="bg-green-500/20 text-green-400 border border-green-500/30 text-xs">
                               {signal.tradeTier.replace('_', ' ')}
                             </Badge>

@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { resolvedSignals, resolvedSignalsStats } from "@/data/resolvedSignals";
-import { TrendingUp, CheckCircle, ExternalLink, Trophy } from "lucide-react";
+import { CheckCircle, ExternalLink, Trophy } from "lucide-react";
 
 const ResolvedSignals = () => {
   const formatPrice = (price: number) => `${(price * 100).toFixed(1)}¢`;
@@ -20,7 +20,7 @@ const ResolvedSignals = () => {
                 Resolved Signals - Track Record
               </CardTitle>
               <CardDescription className="text-green-300/60 mt-2">
-                Verified historical performance from manually tracked trades
+                Verified executable performance from manually tracked trades
               </CardDescription>
             </div>
             <div className="text-right">
@@ -127,23 +127,6 @@ const ResolvedSignals = () => {
           </Card>
         ))}
       </div>
-
-      {/* Bottom Banner */}
-      <Card className="bg-gradient-to-r from-green-900/10 to-transparent border-green-500/20">
-        <CardContent className="py-6">
-          <div className="flex items-center gap-4">
-            <TrendingUp className="w-8 h-8 text-green-400" />
-            <div>
-              <div className="text-lg font-bold text-white">
-                14 Consecutive Wins • 100% Win Rate • $657.20 Total Profit
-              </div>
-              <div className="text-sm text-green-300/60 mt-1">
-                All signals manually tracked and verified on Polymarket
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };

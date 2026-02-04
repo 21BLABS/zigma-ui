@@ -51,7 +51,7 @@ const Index = () => {
               <div className="mt-4 flex flex-wrap gap-3">
                 <Link
                   to="/chat"
-                  className="inline-flex items-center gap-2 rounded-full border border-green-400/60 bg-black/40 px-5 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-green-200 hover:bg-green-400/10"
+                  className="inline-flex items-center gap-2 rounded-full border border-green-400/60 bg-green-500/20 px-6 py-3 text-sm font-bold uppercase tracking-[0.2em] text-green-200 hover:bg-green-500/30 shadow-[0_0_15px_rgba(34,197,94,0.3)] transition-all"
                 >
                   Launch chat
                 </Link>
@@ -100,7 +100,7 @@ const Index = () => {
                   My Agent
                 </Link>
                 <a
-                  href="http://localhost:3002"
+                  href={import.meta.env.VITE_PLATFORM_API_URL || "https://platform.zigma.pro"}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 text-center py-2 px-4 bg-purple-500/10 border border-purple-400/60 rounded-lg text-purple-200 hover:bg-purple-500/20 transition-all text-xs font-semibold uppercase tracking-wider"

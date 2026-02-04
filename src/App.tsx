@@ -20,9 +20,6 @@ import AgentDashboard from "./pages/AgentDashboard";
 import Skills from "./pages/Skills";
 import Leaderboard from "./pages/Leaderboard";
 import TermsOfService from "./pages/TermsOfService";
-import UserGuide from "./pages/UserGuide";
-import SDKGuide from "./pages/SDKGuide";
-import ApiDocumentation from "./pages/ApiDocumentation";
 import FAQ from "./pages/FAQ";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
@@ -58,9 +55,6 @@ const AppContent = () => {
       <Route path="/terms-of-service" element={<TermsOfService />} />
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
       <Route path="/faq" element={<FAQ />} />
-      <Route path="/user-guide" element={<UserGuide />} />
-      <Route path="/sdk-guide" element={<SDKGuide />} />
-      <Route path="/api-documentation" element={<ApiDocumentation />} />
       
       {/* Protected Routes */}
       <Route path="/analytics" element={

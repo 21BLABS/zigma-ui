@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import SiteHeader from "@/components/SiteHeader";
+import Footer from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
-import ResolvedSignals from "@/components/ResolvedSignals";
 import { 
   RefreshCw, 
   Download, 
@@ -20,6 +20,7 @@ interface Signal {
   id: string;
   marketId: string;
   question: string;
+  marketQuestion: string;
   marketPrice: number;
   revisedPrior: number;
   rawEdge: number;
@@ -50,11 +51,12 @@ const SignalsPage = () => {
     try {
       const ZIGMA_API = import.meta.env.VITE_ZIGMA_API_URL || 'http://localhost:3001';
       setLoading(true);
-      const response = await fetch(`${ZIGMA_API}/api/signals/recent?limit=100`);
+      const response = await fetch(`${ZIGMA_API}/api/signals`);
       if (response.ok) {
         const data = await response.json();
-        // Backend returns array directly
-        const signalsArray = Array.isArray(data) ? data : (data.signals || []);
+        // Backend returns { success: true, data: [...signals], count: N }
+        const signalsArray = Array.isArray(data) ? data : (data.data || []);
+        console.log('🔍 Signals received:', signalsArray.length, signalsArray[0]?.marketQuestion);
         setSignals(signalsArray);
       }
     } catch (error) {
@@ -66,38 +68,43 @@ const SignalsPage = () => {
 
   const categories = ['All Categories', 'Crypto', 'Politics', 'Sports', 'Weather', 'Tech', 'Business', 'Event'];
 
-  const filteredSignals = signals.filter(signal => {
+  const filteredSignals = (signals || []).filter(signal => {
+    if (!signal) return false;
+    
     if (selectedCategory !== 'All Categories' && signal.category !== selectedCategory) return false;
     if (Math.abs(signal.netEdge * 100) < minEdge) return false;
-    if (searchQuery && !signal.question.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (searchQuery && !signal.marketQuestion?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
 
-  const executableSignals = filteredSignals.filter(s => Math.abs(s.netEdge) >= 0.02);
-  const outlookSignals = filteredSignals.filter(s => Math.abs(s.netEdge) < 0.02);
+  const executableSignals = filteredSignals.filter(s => s && Math.abs(s.netEdge) >= 0.02);
+  const outlookSignals = filteredSignals.filter(s => s && Math.abs(s.netEdge) < 0.02);
+  
+  console.log('🔍 Filtered signals:', filteredSignals.length);
+  console.log('🔍 Executable signals:', executableSignals.length);
+  console.log('🔍 Outlook signals:', outlookSignals.length);
 
   const stats = {
-    activeSignals: signals.length,
-    outlooks: outlookSignals.length,
-    executable: executableSignals.length,
-    avgEdge: signals.length > 0 
+    activeSignals: signals ? signals.length : 0,
+    outlooks: outlookSignals ? outlookSignals.length : 0,
+    executable: executableSignals ? executableSignals.length : 0,
+    avgEdge: signals && signals.length > 0 
       ? (signals.reduce((sum, s) => sum + Math.abs(s.netEdge), 0) / signals.length * 100).toFixed(1)
       : '0',
-    avgConfidence: signals.length > 0
-      ? (signals.reduce((sum, s) => sum + s.confidence, 0) / signals.length).toFixed(0)
+    avgConfidence: signals && signals.length > 0
+      ? (signals.reduce((sum, s) => sum + (s.confidence || 0), 0) / signals.length).toFixed(0)
       : '0',
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black">
+    <div className="min-h-screen bg-black text-green-400 font-mono">
       <SiteHeader />
       
-      {/* Hero Section */}
-      <section className="relative py-12 sm:py-16 border-b border-green-500/10">
-        <div className="absolute inset-0 bg-gradient-to-b from-green-500/5 to-transparent pointer-events-none" />
-        <div className="container mx-auto px-6 sm:px-8 max-w-7xl relative">
+      <main className="container mx-auto px-6 sm:px-8 py-8 max-w-7xl">
+        {/* Header Section */}
+        <div className="mb-8">
           <div className="text-center space-y-4">
-            <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-green-400 via-green-300 to-green-500 bg-clip-text text-transparent">
+            <h1 className="text-4xl sm:text-5xl font-bold text-white">
               Live Market Signals
             </h1>
             <p className="text-lg text-gray-400 max-w-2xl mx-auto">
@@ -105,9 +112,7 @@ const SignalsPage = () => {
             </p>
           </div>
         </div>
-      </section>
-      
-      <div className="container mx-auto px-6 sm:px-8 py-8 max-w-7xl">
+        
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card className="bg-gradient-to-br from-gray-900 to-gray-900/50 border-green-500/20">
@@ -185,9 +190,9 @@ const SignalsPage = () => {
             </Card>
             <Card className="bg-gray-950 border-green-500/20">
               <CardContent className="p-4">
-                <p className="text-xs text-green-300/60 mb-1">Historical Trades</p>
+                <p className="text-xs text-green-300/60 mb-1">Executable Trades</p>
                 <p className="text-2xl font-bold text-white">14</p>
-                <p className="text-xs text-green-300/40">Executed opportunities</p>
+                <p className="text-xs text-green-300/40">Trade opportunities</p>
               </CardContent>
             </Card>
             <Card className="bg-gray-950 border-green-500/20">
@@ -260,7 +265,7 @@ const SignalsPage = () => {
                       <CardContent className="p-6">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
-                            <h3 className="text-white font-semibold text-lg mb-3">{signal.question}</h3>
+                            <h3 className="text-white font-semibold text-lg mb-3">{signal.marketQuestion}</h3>
                             <div className="flex items-center gap-4 text-sm">
                               <Badge variant="outline" className="border-yellow-500/50 text-yellow-400">
                                 OUTLOOK
@@ -332,7 +337,7 @@ const SignalsPage = () => {
                                   </Badge>
                                 )}
                               </div>
-                              <h3 className="text-white font-semibold text-lg mb-2">{signal.question}</h3>
+                              <h3 className="text-white font-semibold text-lg mb-2">{signal.marketQuestion}</h3>
                               <p className="text-xs text-green-300/60">
                                 📅 {new Date(signal.timestamp).toLocaleString()}
                               </p>
@@ -391,18 +396,14 @@ const SignalsPage = () => {
           </>
         )}
 
-        {/* Resolved Signals Section */}
-        <div className="mt-16">
-          <h2 className="text-3xl font-bold text-white mb-2">Resolved Signals - Track Record</h2>
-          <p className="text-green-300/60 mb-8">Historical performance from manually tracked trades</p>
-          <ResolvedSignals />
-        </div>
-
+        
         {/* Disclaimer */}
         <div className="mt-12 text-center">
           <p className="text-red-400 text-sm">⚠️ DISCLAIMER: NOT FINANCIAL ADVICE</p>
         </div>
-      </div>
+      </main>
+
+      <Footer />
     </div>
   );
 };
