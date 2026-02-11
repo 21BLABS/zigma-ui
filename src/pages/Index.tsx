@@ -1,11 +1,12 @@
+import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Link } from "react-router-dom";
 import Hero from "@/components/Hero";
 import AntiAIManifesto from "@/components/SignalPhilosophy";
 import TokenUtility from "@/components/TokenUtility";
 import Footer from "@/components/Footer";
 import SiteHeader from "@/components/SiteHeader";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
-import { Link } from "react-router-dom";
-import { useState, useEffect } from 'react';
 
 const Index = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -94,19 +95,19 @@ const Index = () => {
               </div>
               <div className="flex gap-3">
                 <Link
-                  to="/agent"
-                  className="flex-1 text-center py-2 px-4 bg-purple-600/20 border border-purple-400/60 rounded-lg text-purple-200 hover:bg-purple-600/30 transition-all text-xs font-semibold uppercase tracking-wider"
+                  to="/trading"
+                  className="flex-1 text-center py-2 px-4 bg-green-900/20 border border-green-500/30 rounded-lg text-green-400 hover:bg-green-900/30 transition-all"
                 >
-                  My Agent
+                  Start Trading
+                  <p className="text-xs text-green-300/60 mt-1">Deposit & auto-trade</p>
                 </Link>
-                <a
-                  href={import.meta.env.VITE_PLATFORM_API_URL || "https://platform.zigma.pro"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 text-center py-2 px-4 bg-purple-500/10 border border-purple-400/60 rounded-lg text-purple-200 hover:bg-purple-500/20 transition-all text-xs font-semibold uppercase tracking-wider"
+                <Link
+                  to="/docs"
+                  className="flex-1 text-center py-2 px-4 bg-purple-900/20 border border-purple-500/30 rounded-lg text-purple-400 hover:bg-purple-900/30 transition-all"
                 >
                   Developer Docs
-                </a>
+                  <p className="text-xs text-purple-300/60 mt-1">API & guides</p>
+                </Link>
               </div>
             </div>
 
@@ -172,7 +173,7 @@ const Index = () => {
             {/* Quick Links */}
             <div className="bg-black/60 border border-gray-700 rounded-lg p-6">
               <h3 className="text-lg font-bold text-white mb-4">🔗 QUICK LINKS</h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <Link
                   to="/chat"
                   className="text-center p-3 bg-green-900/20 border border-green-500/30 rounded-lg hover:bg-green-900/30 transition-all"
@@ -193,6 +194,20 @@ const Index = () => {
                 >
                   <div className="text-2xl mb-1">📈</div>
                   <p className="text-sm font-semibold text-purple-400">Analytics</p>
+                </Link>
+                <Link
+                  to="/trading"
+                  className="text-center p-3 bg-green-900/20 border border-green-500/30 rounded-lg hover:bg-green-900/30 transition-all"
+                >
+                  <div className="text-2xl mb-1">🤖</div>
+                  <p className="text-sm font-semibold text-green-400">Trading</p>
+                </Link>
+                <Link
+                  to="/leaderboard"
+                  className="text-center p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg hover:bg-yellow-900/30 transition-all"
+                >
+                  <div className="text-2xl mb-1">🏆</div>
+                  <p className="text-sm font-semibold text-yellow-400">Leaderboard</p>
                 </Link>
                 <Link
                   to="/manifesto"

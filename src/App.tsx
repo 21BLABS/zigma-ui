@@ -1,9 +1,12 @@
+import * as React from "react";
+import LoadingFallback from "./components/LoadingFallback";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
-import { NotificationProvider } from "@/components/NotificationSystem";
+import { NotificationProvider as OldNotificationProvider } from "@/components/NotificationSystem";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { MagicAuthProvider } from "@/contexts/MagicAuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -16,13 +19,15 @@ import Chat from "./pages/Chat";
 import Analytics from "./pages/Analytics";
 import SignalPerformance from "./pages/SignalPerformance";
 import Settings from "./pages/Settings";
-import AgentDashboard from "./pages/AgentDashboard";
-import Skills from "./pages/Skills";
 import Leaderboard from "./pages/Leaderboard";
 import TermsOfService from "./pages/TermsOfService";
 import FAQ from "./pages/FAQ";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
+import Notifications from "./pages/Notifications";
+import NotificationSettings from "./pages/NotificationSettings";
+import TradingDashboard from "./pages/TradingDashboard";
+import { NotificationBell } from "./components/NotificationBell";
 import { useKeyboardShortcuts } from "./utils/keyboard-shortcuts";
 
 const queryClient = new QueryClient();
@@ -43,7 +48,11 @@ const AppContent = () => {
     'Alt+?': () => navigate('/api-documentation'),
     'Escape': () => navigate('/'),
     'Alt+t': () => navigate('/terms-of-service'),
+    'Alt+n': () => navigate('/notifications'),
     'Alt+r': () => window.location.reload(),
+    'Alt+p': () => navigate('/trading'),
+    'Alt+y': () => navigate('/strategies'),
+    'Alt+m': () => navigate('/wallets'),
   });
 
   return (
@@ -84,17 +93,37 @@ const AppContent = () => {
       } />
       <Route path="/agent" element={
         <ProtectedRoute>
-          <AgentDashboard />
-        </ProtectedRoute>
-      } />
-      <Route path="/skills" element={
-        <ProtectedRoute>
-          <Skills />
+          <TradingDashboard />
         </ProtectedRoute>
       } />
       <Route path="/leaderboard" element={
         <ProtectedRoute>
           <Leaderboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/notifications" element={
+        <ProtectedRoute>
+          <Notifications />
+        </ProtectedRoute>
+      } />
+      <Route path="/notification-settings" element={
+        <ProtectedRoute>
+          <NotificationSettings />
+        </ProtectedRoute>
+      } />
+      <Route path="/trading" element={
+        <ProtectedRoute>
+          <TradingDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/strategies" element={
+        <ProtectedRoute>
+          <TradingDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/wallets" element={
+        <ProtectedRoute>
+          <TradingDashboard />
         </ProtectedRoute>
       } />
       
@@ -104,22 +133,41 @@ const AppContent = () => {
   );
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <MagicAuthProvider>
-        <NotificationProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <AppContent />
-            </BrowserRouter>
-          </TooltipProvider>
-        </NotificationProvider>
-      </MagicAuthProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    // Simulate loading delay to ensure all resources are loaded
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading) {
+    return <LoadingFallback />;
+  }
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <MagicAuthProvider>
+          <NotificationProvider>
+            <OldNotificationProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <AppContent />
+                </BrowserRouter>
+              </TooltipProvider>
+            </OldNotificationProvider>
+          </NotificationProvider>
+        </MagicAuthProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

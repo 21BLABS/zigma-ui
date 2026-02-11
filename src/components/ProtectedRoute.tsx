@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useMagicAuth } from '@/contexts/MagicAuthContext';
 import Auth from './Auth';
@@ -8,8 +8,16 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useMagicAuth();
+  const { isAuthenticated, isLoading, user, platform, connectToPlatform } = useMagicAuth();
   const location = useLocation();
+  
+  // Try to connect to platform if authenticated but not connected
+  useEffect(() => {
+    if (isAuthenticated && user && !platform.isConnected && !platform.isLoading) {
+      console.log('🔄 ProtectedRoute: Attempting platform connection');
+      connectToPlatform();
+    }
+  }, [isAuthenticated, user, platform.isConnected, platform.isLoading, connectToPlatform]);
 
   if (isLoading) {
     return (

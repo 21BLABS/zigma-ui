@@ -35,7 +35,7 @@ const MarketsPage = () => {
 
   const fetchMarkets = async () => {
     try {
-      const ZIGMA_API = import.meta.env.VITE_ZIGMA_API_URL || 'http://localhost:3001';
+      const ZIGMA_API = import.meta.env.VITE_API_BASE_URL || 'https://api.zigma.pro';
       console.log('[Markets] Fetching from Zigmav2...');
       const response = await fetch(`${ZIGMA_API}/api/signals/recent?limit=50`);
       

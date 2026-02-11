@@ -4,6 +4,9 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
+// Ensure React is available globally for JSX transform
+// This is needed for components that don't explicitly import React
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
@@ -28,7 +31,9 @@ export default defineConfig(({ mode }) => ({
     'global': 'globalThis',
   },
   plugins: [
-    react(), 
+    react({
+      jsxImportSource: 'react',
+    }), 
     nodePolyfills({
       include: ['buffer', 'process', 'util', 'stream'],
       globals: {

@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { NotificationBell } from "@/components/NotificationSystem";
+import { NotificationBell } from "@/components/NotificationBell";
 import SimpleUserProfile from "@/components/SimpleUserProfile";
 import { useMagicAuth } from "@/contexts/MagicAuthContext";
 import { LogIn, ChevronDown, BookOpen, Settings } from "lucide-react";
@@ -18,7 +18,7 @@ const primaryNavItems = [
   { label: "Chat", to: "/chat" },
   { label: "Signals", to: "/signals" },
   { label: "Analytics", to: "/analytics" },
-  { label: "Agent", to: "/agent" },
+  { label: "Trading", to: "/trading" },
 ];
 
 const docsLinks = [

@@ -49,7 +49,7 @@ const SignalsPage = () => {
 
   const fetchSignals = async () => {
     try {
-      const ZIGMA_API = import.meta.env.VITE_ZIGMA_API_URL || 'http://localhost:3001';
+      const ZIGMA_API = import.meta.env.VITE_API_BASE_URL || 'https://api.zigma.pro';
       setLoading(true);
       const response = await fetch(`${ZIGMA_API}/api/signals`);
       if (response.ok) {

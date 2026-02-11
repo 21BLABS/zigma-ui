@@ -2,8 +2,7 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import { getAccount, getAssociatedTokenAddress } from '@solana/spl-token';
 
 // Solana configuration
-// Using Helius RPC with user's API key
-const SOLANA_RPC_URL = 'https://mainnet.helius-rpc.com/?api-key=5d19455d-be52-4a83-b70e-3c062e226a50';
+const SOLANA_RPC_URL = import.meta.env.VITE_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
 const ZIGMA_TOKEN_MINT = 'xT4tzTkuyXyDqCWeZyahrhnknPd8KBuuNjPngvqcyai';
 
 // Chat payment configuration
@@ -96,7 +95,8 @@ export async function canUseChat(walletAddress: string, userEmail?: string): Pro
   usingFreeTrial?: boolean;
 }> {
   // DEV EXCEPTION: Allow unlimited chat for dev/test accounts
-  const DEV_EMAILS = ['neohex262@gmail.com', 'jissjoseph30@gmail.com'];
+  const devEmailsEnv = import.meta.env.VITE_DEV_EMAILS || '';
+  const DEV_EMAILS = devEmailsEnv ? devEmailsEnv.split(',').map((e: string) => e.trim().toLowerCase()) : [];
   if (userEmail && DEV_EMAILS.includes(userEmail.toLowerCase())) {
     console.log('🔓 DEV MODE: Unlimited chat access for', userEmail);
     return {

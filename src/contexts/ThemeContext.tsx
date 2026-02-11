@@ -1,4 +1,6 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import * as React from "react";
+const { createContext, useContext, useState, useEffect } = React;
+type ReactNode = React.ReactNode;
 
 type Theme = "dark" | "light";
 
@@ -19,8 +21,13 @@ export const useTheme = () => {
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem("zigma-theme") as Theme;
-    return saved || "dark";
+    try {
+      const saved = localStorage.getItem("zigma-theme") as Theme;
+      return saved === "light" || saved === "dark" ? saved : "light";
+    } catch (e) {
+      // Default to light theme if localStorage fails
+      return "light";
+    }
   });
 
   useEffect(() => {

@@ -119,10 +119,22 @@ const SignalPerformance = () => {
       const data = await res.json();
       
       const seen = new Set<string>();
-      const filtered = data.filter((signal: Signal) => {
-        if (signal.price === 0 || !signal.price) return false;
+      const filtered = data.filter((signal: any) => {
+        const price = signal.price || signal.marketPrice || signal.yesPrice;
+        if (!price) return false;
         if (seen.has(signal.marketId)) return false;
         seen.add(signal.marketId);
+        // Normalize fields — backend uses effectiveEdge/netEdge (percentage), UI expects edge (decimal)
+        signal.price = price;
+        if (!signal.edge && (signal.effectiveEdge || signal.netEdge || signal.rawEdge)) {
+          signal.edge = (signal.effectiveEdge || signal.netEdge || signal.rawEdge) / 100;
+        }
+        if (!signal.confidence && signal.confidenceScore) {
+          signal.confidence = signal.confidenceScore;
+        }
+        if (!signal.marketQuestion && signal.question) {
+          signal.marketQuestion = signal.question;
+        }
         return true;
       });
       
@@ -577,7 +589,7 @@ const SignalPerformance = () => {
                         </div>
                         <div className="bg-black/40 rounded-lg p-2 border border-gray-800/50">
                           <div className="text-gray-400 mb-1">Edge</div>
-                          <div className="font-bold text-orange-400">{signal.edge.toFixed(2)}%</div>
+                          <div className="font-bold text-orange-400">{((signal.edge || 0) * 100).toFixed(2)}%</div>
                         </div>
                         <div className="bg-black/40 rounded-lg p-2 border border-gray-800/50">
                           <div className="text-gray-400 mb-1">Price</div>

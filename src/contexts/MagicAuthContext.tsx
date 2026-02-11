@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { magic } from '@/lib/magic';
+import { magic, getMagic, isMagicInitialized } from '@/lib/magic';
 import { getZigmaBalance, calculateAvailableChats, canUseChat } from '@/lib/solana';
+import { getOrCreateAgent, Agent } from '@/lib/platformApi';
 
 interface User {
   id: string;
@@ -12,6 +13,13 @@ interface User {
   wallet_address?: string;
   wallet_type?: string;
   auth_provider: 'email' | 'wallet';
+}
+
+interface PlatformAuth {
+  agent: Agent | null;
+  isConnected: boolean;
+  isLoading: boolean;
+  error: string | null;
 }
 
 interface ChatStatus {
@@ -33,6 +41,8 @@ interface MagicAuthContextType {
   logout: () => Promise<void>;
   refreshChatStatus: () => Promise<void>;
   getIdToken: () => Promise<string | null>;
+  platform: PlatformAuth;
+  connectToPlatform: () => Promise<Agent | null>;
 }
 
 const MagicAuthContext = createContext<MagicAuthContextType | undefined>(undefined);
@@ -54,10 +64,32 @@ export const MagicAuthProvider: React.FC<MagicAuthProviderProps> = ({ children }
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [chatStatus, setChatStatus] = useState<ChatStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [platform, setPlatform] = useState<PlatformAuth>({
+    agent: null,
+    isConnected: false,
+    isLoading: false,
+    error: null
+  });
 
   // Check if user is already logged in on mount
   useEffect(() => {
     checkUserSession();
+  }, []);
+  
+  // Auto-connect to platform when user is authenticated
+  useEffect(() => {
+    if (user && !platform.isConnected && !platform.isLoading) {
+      console.log('🔄 Auto-connecting to platform for user:', user.email);
+      connectToPlatform();
+    }
+  }, [user, platform.isConnected, platform.isLoading]);
+  
+  // Force connect on component mount if user exists
+  useEffect(() => {
+    if (user && !platform.isConnected) {
+      console.log('🔄 Forcing platform connection on mount');
+      connectToPlatform();
+    }
   }, []);
 
   // Refresh chat status when wallet address changes
@@ -69,11 +101,19 @@ export const MagicAuthProvider: React.FC<MagicAuthProviderProps> = ({ children }
 
   const checkUserSession = async () => {
     try {
-      const isLoggedIn = await magic.user.isLoggedIn();
+      // Get Magic instance safely
+      const magicInstance = getMagic();
+      if (!magicInstance) {
+        console.error('❌ Magic not initialized in checkUserSession');
+        setIsLoading(false);
+        return;
+      }
+      
+      const isLoggedIn = await magicInstance.user.isLoggedIn();
       console.log('🔍 checkUserSession - isLoggedIn:', isLoggedIn);
       
       if (isLoggedIn) {
-        const metadata = await (magic.user as any).getInfo();
+        const metadata = await magicInstance.user.getInfo();
         console.log('📋 checkUserSession - metadata:', metadata);
         
         // Get Solana wallet address using Solana extension
@@ -81,7 +121,7 @@ export const MagicAuthProvider: React.FC<MagicAuthProviderProps> = ({ children }
         try {
           console.log('🔑 Getting Solana wallet address...');
           // Use getPublicAddress() to get Solana address (not Ethereum)
-          publicAddress = await (magic as any).solana.getPublicAddress();
+          publicAddress = await magicInstance.solana.getPublicAddress();
           console.log('✅ Solana wallet address:', publicAddress);
         } catch (solanaError) {
           console.error('❌ Failed to get Solana wallet:', solanaError);
@@ -114,22 +154,29 @@ export const MagicAuthProvider: React.FC<MagicAuthProviderProps> = ({ children }
       setIsLoading(true);
       console.log('🔐 Starting Magic.link login for:', email);
       
+      // Get Magic instance safely
+      const magicInstance = getMagic();
+      if (!magicInstance) {
+        console.error('❌ Magic not initialized in login');
+        throw new Error('Magic not initialized');
+      }
+      
       // Send magic link to email
       console.log('📧 Sending OTP to email...');
-      await (magic.auth as any).loginWithEmailOTP({ email });
+      await magicInstance.auth.loginWithEmailOTP({ email });
       console.log('✅ OTP sent successfully');
       
       // Get user metadata
       console.log('👤 Fetching user metadata...');
-      const metadata = await (magic.user as any).getInfo();
+      const metadata = await magicInstance.user.getInfo();
       console.log('📋 User metadata:', metadata);
       
       // Get Solana wallet address using Solana extension
       let publicAddress = '';
       try {
-        console.log('� Getting Solana wallet address...');
+        console.log('🔑 Getting Solana wallet address...');
         // Use getPublicAddress() to get Solana address (not Ethereum)
-        publicAddress = await (magic as any).solana.getPublicAddress();
+        publicAddress = await magicInstance.solana.getPublicAddress();
         console.log('✅ Solana wallet address:', publicAddress);
       } catch (solanaError) {
         console.error('❌ Failed to get Solana wallet:', solanaError);
@@ -162,13 +209,32 @@ export const MagicAuthProvider: React.FC<MagicAuthProviderProps> = ({ children }
   const logout = async () => {
     try {
       setIsLoading(true);
-      await magic.user.logout();
+      console.log('🔒 Logging out...');
+      
+      // Get Magic instance safely
+      const magicInstance = getMagic();
+      if (magicInstance) {
+        // Logout from Magic
+        await magicInstance.user.logout();
+        console.log('✅ Logged out from Magic');
+      } else {
+        console.warn('⚠️ Magic not initialized during logout');
+      }
+      
+      // Clear user state
       setUser(null);
       setWalletAddress(null);
       setChatStatus(null);
+      setPlatform({
+        agent: null,
+        isConnected: false,
+        isLoading: false,
+        error: null
+      });
+      
+      console.log('✅ User state cleared');
     } catch (error) {
-      console.error('Logout error:', error);
-      throw error;
+      console.error('❌ Error logging out:', error);
     } finally {
       setIsLoading(false);
     }
@@ -198,10 +264,57 @@ export const MagicAuthProvider: React.FC<MagicAuthProviderProps> = ({ children }
 
   const getIdToken = async (): Promise<string | null> => {
     try {
-      const token = await magic.user.getIdToken();
-      return token;
+      if (!user) return null;
+      
+      // Get Magic instance safely
+      const magicInstance = getMagic();
+      if (!magicInstance) {
+        console.error('❌ Magic not initialized in getIdToken');
+        return null;
+      }
+      
+      return await magicInstance.user.getIdToken();
     } catch (error) {
-      console.error('Failed to get ID token:', error);
+      console.error('❌ Error getting ID token:', error);
+      return null;
+    }
+  };
+  
+  /**
+   * Connect to platform backend and get/create agent
+   */
+  const connectToPlatform = async (): Promise<Agent | null> => {
+    try {
+      setPlatform(prev => ({ ...prev, isLoading: true, error: null }));
+      
+      console.log('🔌 [Platform] Connecting to platform backend...');
+      const agent = await getOrCreateAgent();
+      
+      if (agent) {
+        console.log('✅ [Platform] Connected successfully, agent:', agent.id);
+        setPlatform({
+          agent,
+          isConnected: true,
+          isLoading: false,
+          error: null
+        });
+        return agent;
+      } else {
+        console.error('❌ [Platform] Failed to connect to platform');
+        setPlatform(prev => ({
+          ...prev,
+          isLoading: false,
+          error: 'Failed to connect to platform'
+        }));
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ [Platform] Connection error:', error);
+      setPlatform(prev => ({
+        ...prev,
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }));
       return null;
     }
   };
@@ -216,6 +329,8 @@ export const MagicAuthProvider: React.FC<MagicAuthProviderProps> = ({ children }
     logout,
     refreshChatStatus,
     getIdToken,
+    platform,
+    connectToPlatform,
   };
 
   return (
